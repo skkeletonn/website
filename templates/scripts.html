@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vadrifts Scripts</title>
+  <link rel="icon" href="https://i.imgur.com/ePueN25.png" type="image/png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000000;
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .bg-lights {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .light {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(200px);
+      opacity: 0.35;
+      animation-duration: 50s;
+      animation-iteration-count: infinite;
+      animation-timing-function: ease-in-out;
+    }
+
+    .light-1 {
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, #7b2cbf 0%, transparent 70%);
+      top: 2%;
+      left: 2%;
+      animation-name: float1;
+    }
+
+    .light-2 {
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, #9d4edd 0%, transparent 70%);
+      top: 15%;
+      right: 8%;
+      animation-name: float2;
+      animation-delay: -5s;
+    }
+
+    .light-3 {
+      width: 450px;
+      height: 450px;
+      background: radial-gradient(circle, #b388ff 0%, transparent 70%);
+      bottom: 20%;
+      left: 10%;
+      animation-name: float3;
+      animation-delay: -10s;
+    }
+
+    .light-4 {
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, #c77dff 0%, transparent 70%);
+      bottom: 15%;
+      right: 12%;
+      animation-name: float4;
+      animation-delay: -15s;
+    }
+
+    .light-5 {
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, #a45cff 0%, transparent 70%);
+      top: 45%;
+      left: 45%;
+      animation-name: float5;
+      animation-delay: -20s;
+    }
+
+    .light-6 {
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, #b15eff 0%, transparent 70%);
+      top: 60%;
+      right: 30%;
+      animation-name: float6;
+      animation-delay: -25s;
+    }
+
+    .light-7 {
+      width: 380px;
+      height: 380px;
+      background: radial-gradient(circle, #ffb347 0%, transparent 70%);
+      bottom: 8%;
+      right: 5%;
+      animation-name: float7;
+      animation-delay: -30s;
+    }
+
+    @keyframes float1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(60px, -40px) scale(1.05); }
+    }
+
+    @keyframes float2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-50px, 40px) scale(1.05); }
+    }
+
+    @keyframes float3 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(40px, -60px) scale(0.95); }
+    }
+
+    @keyframes float4 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-40px, -50px) scale(1.1); }
+    }
+
+    @keyframes float5 {
+      0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+      50% { transform: translate(-20px, -30px) scale(1.05) rotate(180deg); }
+    }
+
+    @keyframes float6 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(40px, -50px) scale(1.05); }
+    }
+
+    @keyframes float7 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-30px, -40px) scale(1.05); }
+    }
+
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .particle {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: #a45cff;
+      border-radius: 50%;
+      opacity: 0.5;
+      box-shadow: 0 0 8px #a45cff;
+      animation: floatUp 240s linear infinite;
+    }
+
+    @keyframes floatUp {
+      0% {
+        transform: translateY(100vh) translateX(0);
+        opacity: 0.5;
+      }
+      50% {
+        transform: translateY(50vh) translateX(20px);
+        opacity: 0.4;
+      }
+      100% {
+        transform: translateY(-200px) translateX(40px);
+        opacity: 0.3;
+      }
+    }
+    .header {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 120px 20px 60px;
+      animation: fadeInUp 1.2s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    h1 {
+      font-size: 72px;
+      font-weight: 900;
+      background: linear-gradient(90deg, 
+        #ffffff 0%, 
+        #ffffff 25%,
+        #7209b7 50%, 
+        #ff9f43 75%,
+        #ff9f43 100%
+      );
+      background-size: 130% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 30px;
+      letter-spacing: -2px;
+      animation: orangePulse 7s ease-in-out infinite;
+      text-shadow: 0 0 40px rgba(114, 9, 183, 0.5);
+      filter: drop-shadow(0 0 20px rgba(114, 9, 183, 0.3));
+    }
+
+    @keyframes orangePulse {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 50% 50%; }
+    }
+
+    .tagline {
+      font-size: 24px;
+      color: #ffffff;
+      margin-bottom: 20px;
+      font-weight: 500;
+      animation: fadeInUp 1.2s ease-out 0.3s both;
+    }
+
+    .description {
+      font-size: 18px;
+      color: #ffffff;
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.7;
+      font-weight: 400;
+      animation: fadeInUp 1.2s ease-out 0.6s both;
+    }
+
+    .description .highlight {
+      color: #9c88ff;
+      font-weight: 600;
+    }
+
+    .search-section {
+      position: relative;
+      z-index: 10;
+      padding: 0 20px 40px;
+      display: flex;
+      justify-content: center;
+      animation: fadeInUp 1.2s ease-out 0.9s both;
+    }
+
+    .search-box {
+      position: relative;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 18px 60px 18px 24px;
+      font-size: 16px;
+      background: #111111;
+      backdrop-filter: blur(20px);
+      border: 1px solid #222;
+      border-radius: 15px;
+      color: #ffffff;
+      outline: none;
+      transition: all 0.3s ease;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .search-input:focus {
+      border-color: #7209b7;
+      background: #0a0a0a;
+      box-shadow: 
+        0 0 0 4px rgba(114, 9, 183, 0.15),
+        0 0 30px rgba(114, 9, 183, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .search-input::placeholder {
+      color: #666;
+    }
+
+    .search-icon {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      background-image: url('https://i.imgur.com/YJ1SXqR.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.5;
+    }
+
+    .scripts-section {
+      position: relative;
+      z-index: 10;
+      padding: 40px 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      animation: fadeInUp 1.2s ease-out 1.2s both;
+    }
+
+    .scripts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 25px;
+      margin-bottom: 50px;
+    }
+
+    .script-card {
+      background: #111111;
+      border: 1px solid #222;
+      border-radius: 16px;
+      padding: 25px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .script-card::before {
+      content: '';
+      position: absolute;
+      top: -30%;
+      right: -30%;
+      width: 80%;
+      height: 80%;
+      background: radial-gradient(circle, rgba(114, 9, 183, 0.15) 0%, transparent 70%);
+      border-radius: 50%;
+      opacity: 0;
+      transition: all 0.4s ease;
+      z-index: 0;
+    }
+
+    .script-card:hover::before {
+      opacity: 1;
+      width: 120%;
+      height: 120%;
+      top: -40%;
+      right: -40%;
+    }
+
+    .script-card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(114, 9, 183, 0.5);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .script-card > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .script-thumbnail {
+      width: 100%;
+      height: 150px;
+      border-radius: 12px;
+      object-fit: cover;
+      margin-bottom: 15px;
+      background: linear-gradient(135deg, #7209b7 0%, #9d4edd 50%, #ff9f43 100%);
+    }
+
+    .script-game {
+      font-size: 12px;
+      color: #7209b7;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .script-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+
+    .script-description {
+      font-size: 14px;
+      color: #aaa;
+      line-height: 1.5;
+      margin-bottom: 15px;
+    }
+
+    .script-features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 15px;
+    }
+
+    .feature-tag {
+      background: rgba(114, 9, 183, 0.2);
+      color: #9c88ff;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      border: 1px solid rgba(114, 9, 183, 0.3);
+    }
+
+    .script-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .view-btn {
+      flex: 1;
+      background: linear-gradient(135deg, #7209b7 0%, #ff9f43 100%);
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      text-align: center;
+      font-family: 'Inter', sans-serif;
+      box-shadow: 0 5px 15px rgba(114, 9, 183, 0.3);
+    }
+
+    .view-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(114, 9, 183, 0.4);
+    }
+
+    .no-scripts {
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+      grid-column: 1 / -1;
+    }
+
+    .no-scripts-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+      grid-column: 1 / -1;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #222;
+      border-radius: 50%;
+      border-top: 4px solid #7209b7;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .footer {
+      position: relative;
+      z-index: 10;
+      padding: 60px 20px;
+      color: #888;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: 40px;
+      animation: fadeInUp 1.2s ease-out 1.5s both;
+    }
+
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .footer-logo:hover {
+      transform: scale(1.02);
+      filter: drop-shadow(0 0 10px rgba(114, 9, 183, 0.4));
+    }
+
+    .footer-logo-img {
+      width: 24px;
+      height: 24px;
+      transition: none;
+    }
+
+    .footer-copyright {
+      color: #888;
+      font-size: 14px;
+    }
+
+    .footer-discord {
+      display: flex;
+      align-items: center;
+    }
+
+    .footer-discord-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: #2a2a2a;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .footer-discord-link:hover {
+      background: #3a3a3a;
+      transform: translateY(-2px);
+    }
+
+    .footer-discord-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 48px;
+      }
+
+      .tagline {
+        font-size: 20px;
+      }
+
+      .description {
+        font-size: 16px;
+      }
+
+      .scripts-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .script-card {
+        padding: 20px;
+      }
+
+      .script-actions {
+        flex-direction: column;
+      }
+
+      .footer-content {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+      }
+
+      .footer-left {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+
+    /* ===== section separator ===== */
+    .section-separator {
+      max-width: 1200px;
+      margin: 100px auto 60px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 26px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .section-separator::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 320px;
+      height: 120px;
+      background: radial-gradient(ellipse at center, rgba(155, 81, 224, 0.22), transparent 65%);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: -1;
+      filter: blur(20px);
+    }
+    .section-separator .sep-line {
+      flex: 1;
+      height: 1px;
+      position: relative;
+      background: linear-gradient(90deg, transparent 0%, rgba(114, 9, 183, 0.15) 20%, rgba(196, 120, 212, 0.85) 50%, rgba(114, 9, 183, 0.15) 80%, transparent 100%);
+    }
+
+    .section-separator .sep-line::after {
+      content: '';
+      position: absolute;
+      inset: -1px 0;
+      background: linear-gradient(90deg, transparent, rgba(196, 120, 212, 0.45), transparent);
+      filter: blur(4px);
+      opacity: 0.8;
+    }
+
+    .section-separator .sep-line.left {
+      mask-image: linear-gradient(90deg, transparent, #000 90%);
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 90%);
+    }
+
+    .section-separator .sep-line.right {
+      mask-image: linear-gradient(90deg, #000, transparent 90%);
+      -webkit-mask-image: linear-gradient(90deg, #000, transparent 90%);
+    }
+    .section-separator .sep-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 26px;
+      border-radius: 999px;
+      border: 1px solid rgba(196, 120, 212, 0.45);
+      background: linear-gradient(135deg, rgba(114, 9, 183, 0.18), rgba(196, 120, 212, 0.08));
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 2.4px;
+      text-transform: uppercase;
+      color: #e9c4f5;
+      box-shadow: 0 0 30px rgba(114, 9, 183, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      white-space: nowrap;
+      position: relative;
+    }
+
+    .section-separator .sep-label::before,
+    .section-separator .sep-label::after {
+      content: '';
+      width: 14px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(196, 120, 212, 0.6));
+    }
+
+    .section-separator .sep-label::after {
+      background: linear-gradient(90deg, rgba(196, 120, 212, 0.6), transparent);
+    }
+    .section-separator .sep-label .sep-dot {
+      width: 9px;
+      height: 9px;
+      background: linear-gradient(135deg, #ffffff, #c478d4 60%, #7209b7);
+      transform: rotate(45deg);
+      border-radius: 2px;
+      box-shadow: 0 0 14px rgba(196, 120, 212, 0.95), 0 0 28px rgba(114, 9, 183, 0.6);
+      animation: sep-pulse 2.6s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes sep-pulse {
+      0%, 100% { transform: rotate(45deg) scale(1); box-shadow: 0 0 14px rgba(196, 120, 212, 0.95), 0 0 28px rgba(114, 9, 183, 0.6); }
+      50% { transform: rotate(45deg) scale(1.25); box-shadow: 0 0 22px rgba(196, 120, 212, 1), 0 0 44px rgba(114, 9, 183, 0.85); }
+    }
+
+    /* ===== other projects section ===== */
+    .other-section {
+      max-width: 1200px;
+      margin: 0 auto 80px;
+      padding: 0 20px;
+      position: relative;
+      z-index: 10;
+    }
+    .other-heading {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .other-heading h2 {
+      font-size: 36px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffffff 0%, #c478d4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .other-heading p {
+      color: #888;
+      font-size: 15px;
+      max-width: 640px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+    .other-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 25px;
+      margin-top: 40px;
+    }
+
+
+    .script-card { position: relative; }
+
+    .script-status {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 3;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.3px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      pointer-events: none;
+    }
+
+    .script-status.discontinued {
+      background: rgba(239, 68, 68, 0.18);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+    }
+
+    .script-status.patched {
+      background: rgba(255, 159, 67, 0.18);
+      color: #ffb978;
+      border: 1px solid rgba(255, 159, 67, 0.45);
+      box-shadow: 0 4px 14px rgba(255, 159, 67, 0.22);
+    }
+
+    .script-status.updated {
+      background: rgba(74, 222, 128, 0.16);
+      color: #86efac;
+      border: 1px solid rgba(74, 222, 128, 0.45);
+      box-shadow: 0 4px 14px rgba(74, 222, 128, 0.22);
+    }
+
+    .script-card.is-discontinued {
+      opacity: 0.78;
+      filter: saturate(0.85);
+    }
+
+    .script-card.is-discontinued:hover {
+      opacity: 1;
+      filter: saturate(1);
+    }
+    @media (max-width: 768px) {
+      .section-separator { margin: 50px auto 30px; }
+      .section-separator .sep-label { font-size: 11px; padding: 6px 16px; }
+      .other-heading h2 { font-size: 28px; }
+      .other-grid { grid-template-columns: 1fr; gap: 16px; }
+    }
+    </style>
+</head>
+<body>
+  <div class="bg-lights">
+    <div class="light light-1"></div>
+    <div class="light light-2"></div>
+    <div class="light light-3"></div>
+    <div class="light light-4"></div>
+    <div class="light light-5"></div>
+    <div class="light light-6"></div>
+    <div class="light light-7"></div>
+  </div>
+
+  <div class="particles" id="particles"></div>
+
+  {% include '_navbar.html' %}
+
+  <div class="header">
+    <h1>Vadrifts Scripts</h1>
+    <p class="tagline">Script Collection</p>
+    <p class="description">
+      Check out our <span class="highlight">collection</span> of all <span class="highlight">Vadrifts Scripts</span> we've released! 
+      Discover powerful tools and <span class="highlight">exploits</span> for your favorite games.
+    </p>
+  </div>
+
+  <div class="search-section">
+    <div class="search-box">
+      <input 
+        type="text" 
+        class="search-input" 
+        placeholder="Search for scripts, games, or features..."
+        id="searchInput"
+      >
+      <div class="search-icon"></div>
+    </div>
+  </div>
+
+  <div class="scripts-section">
+    <div class="scripts-grid" id="scriptsGrid">
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        <p>Loading scripts...</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-separator" aria-hidden="true">
+    <div class="sep-line left"></div>
+    <div class="sep-label">
+      <span class="sep-dot"></span>
+      Dev Tools
+      <span class="sep-dot"></span>
+    </div>
+    <div class="sep-line right"></div>
+  </div>
+
+  <div class="other-section">
+    <div class="other-heading">
+      <h2>Developer Resources</h2>
+      <p>
+        Libraries, utilities, and drop-in modules for Roblox script developers &mdash;
+        UI frameworks, key systems, anti-loggers, debug tools, and the kind of building blocks
+        that make your own scripts feel polished.
+      </p>
+    </div>
+    <div class="other-grid" id="otherGrid"></div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-content">
+      <div class="footer-left">
+        <a href="/" class="footer-logo">
+          <img src="https://i.imgur.com/ePueN25.png" alt="Vadrifts Logo" class="footer-logo-img">
+        </a>
+        <div class="footer-copyright">
+          &copy; 2026 Vadrifts. All Rights Reserved
+        </div>
+      </div>
+      <div class="footer-discord">
+        <a href="https://discord.com/invite/WDbJ5wE2cR" class="footer-discord-link" target="_blank">
+          <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/discord-white-icon.png" alt="Discord" class="footer-discord-icon">
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allScripts = [];
+    let allOther = [];
+    let searchTimeout = null;
+
+    const scriptStatusLabel = {
+      discontinued: "DISCONTINUED",
+      patched: "PATCHED",
+      updated: "UPDATED"
+    };
+
+    function createParticles() {
+      const particlesContainer = document.getElementById('particles');
+      const particleCount = 15;
+
+      for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = -Math.random() * 15 + 's';
+        particle.style.animationDuration = (15 + Math.random() * 5) + 's';
+        particlesContainer.appendChild(particle);
+      }
+    }
+
+    async function loadScripts() {
+      try {
+        const response = await fetch('/api/scripts');
+        const data = await response.json();
+        allScripts = data.filter(s => (s.category || 'script') === 'script');
+        allOther = data.filter(s => s.category === 'dev');
+        displayScripts(allScripts);
+        renderOtherProjects(allOther);
+      } catch (error) {
+        console.error('Failed to load scripts:', error);
+        displayError();
+      }
+    }
+
+    function displayScripts(scripts) {
+      const grid = document.getElementById('scriptsGrid');
+      
+      if (scripts.length === 0) {
+        grid.innerHTML = `
+          <div class="no-scripts">
+            <div class="no-scripts-icon">📜</div>
+            <h3>No scripts found</h3>
+            <p>Try adjusting your search terms or check back later for new scripts.</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = scripts.map(script => {
+        const status = (script.status || 'active').toLowerCase();
+        const statusBadge = scriptStatusLabel[status]
+          ? `<span class="script-status ${status}">${scriptStatusLabel[status]}</span>`
+          : '';
+        const cardClass = status === 'discontinued' ? 'script-card is-discontinued' : 'script-card';
+        return `
+        <div class="${cardClass}" onclick="viewScript(${JSON.stringify(script.id)})">
+          ${statusBadge}
+          <div class="script-thumbnail" style="background-image: url('${script.thumbnail}'); background-size: cover; background-position: center;"></div>
+          <div class="script-game">${script.game}</div>
+          <h3 class="script-title">${script.title}</h3>
+          <p class="script-description">${script.description}</p>
+
+          <div class="script-features">
+            ${script.features.slice(0, 3).map(feature =>
+              `<span class="feature-tag">${feature}</span>`
+            ).join('')}
+            ${script.features.length > 3 ? `<span class="feature-tag">+${script.features.length - 3} more</span>` : ''}
+          </div>
+
+          <div class="script-actions">
+            <button class="view-btn" onclick="event.stopPropagation(); viewScript(${JSON.stringify(script.id)})">
+              View Script
+            </button>
+          </div>
+        </div>
+      `;}).join('');
+    }
+
+    function displayError() {
+      const grid = document.getElementById('scriptsGrid');
+      grid.innerHTML = `
+        <div class="no-scripts">
+          <div class="no-scripts-icon">⚠️</div>
+          <h3>Failed to load scripts</h3>
+          <p>Please refresh the page or try again later.</p>
+        </div>
+      `;
+    }
+
+    function searchScripts(query) {
+      if (!query.trim()) {
+        displayScripts(allScripts);
+        return;
+      }
+
+      const filtered = allScripts.filter(script => 
+        script.title.toLowerCase().includes(query.toLowerCase()) ||
+        script.game.toLowerCase().includes(query.toLowerCase()) ||
+        script.description.toLowerCase().includes(query.toLowerCase()) ||
+        script.features.some(feature => feature.toLowerCase().includes(query.toLowerCase()))
+      );
+
+      displayScripts(filtered);
+    }
+
+    function viewScript(scriptId) {
+      window.location.href = `/script/${scriptId}`;
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const query = e.target.value;
+      
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+      
+      searchTimeout = setTimeout(() => {
+        searchScripts(query);
+      }, 300);
+    });
+
+    document.getElementById('searchInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        if (searchTimeout) {
+          clearTimeout(searchTimeout);
+        }
+        searchScripts(e.target.value);
+      }
+    });
+
+    function renderOtherProjects(projects) {
+      const grid = document.getElementById('otherGrid');
+      if (!grid) return;
+
+      if (!projects || projects.length === 0) {
+        grid.innerHTML = '';
+        return;
+      }
+
+      grid.innerHTML = projects.map(p => {
+        const status = (p.status || 'active').toLowerCase();
+        const statusBadge = scriptStatusLabel[status]
+          ? `<span class="script-status ${status}">${scriptStatusLabel[status]}</span>`
+          : '';
+        const cardClass = status === 'discontinued' ? 'script-card is-discontinued' : 'script-card';
+        const clickable = p.link && p.link !== '#';
+        const safeLink = (p.link || '').replace(/'/g, "\\'");
+        const navigate = clickable
+          ? (p.external
+              ? `window.open('${safeLink}', '_blank', 'noopener')`
+              : `window.location.href='${safeLink}'`)
+          : '';
+        const cardOnclick = clickable ? `onclick="${navigate}"` : '';
+        const btnOnclick = clickable ? `onclick="event.stopPropagation(); ${navigate}"` : 'disabled';
+        const buttonLabel = p.button_label || 'View Docs';
+        const features = Array.isArray(p.features) ? p.features : [];
+        const thumbStyle = p.thumbnail
+          ? `background-image: url('${p.thumbnail}'); background-size: cover; background-position: center;`
+          : '';
+        return `
+        <div class="${cardClass}" ${cardOnclick} style="${clickable ? '' : 'cursor:default;'}">
+          ${statusBadge}
+          <div class="script-thumbnail" style="${thumbStyle}"></div>
+          <div class="script-game">${p.tag || 'Dev Tool'}</div>
+          <h3 class="script-title">${p.title}</h3>
+          <p class="script-description">${p.description}</p>
+
+          <div class="script-features">
+            ${features.slice(0, 3).map(f => `<span class="feature-tag">${f}</span>`).join('')}
+            ${features.length > 3 ? `<span class="feature-tag">+${features.length - 3} more</span>` : ''}
+          </div>
+
+          <div class="script-actions">
+            <button class="view-btn" ${btnOnclick}>${buttonLabel}</button>
+          </div>
+        </div>
+      `;}).join('');
+    }
+
+    createParticles();
+    loadScripts();
+
+</script>
+</body>
+</html>
