@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verification</title>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --accent-1: #7209b7;
+      --accent-2: #9c88ff;
+      --accent-glow: rgba(114, 9, 183, 0.5);
+      --particle-color: #a45cff;
+    }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bg-lights {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .light {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(150px);
+      opacity: 0;
+      transition: opacity 1.2s ease;
+    }
+
+    .light-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, var(--accent-1) 0%, transparent 70%);
+      top: -15%; left: -10%;
+      animation: drift1 18s ease-in-out infinite;
+    }
+
+    .light-2 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, var(--accent-2) 0%, transparent 70%);
+      bottom: -18%; right: -12%;
+      animation: drift2 18s ease-in-out infinite;
+      animation-delay: -6s;
+    }
+
+    .light-3 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, var(--accent-1) 0%, transparent 60%);
+      top: 45%; left: 50%;
+      transform: translate(-50%, -50%);
+      animation: drift3 22s ease-in-out infinite;
+      animation-delay: -3s;
+    }
+
+    .lights-visible .light-1 { opacity: 0.45; }
+    .lights-visible .light-2 { opacity: 0.35; }
+    .lights-visible .light-3 { opacity: 0.15; }
+
+    @keyframes drift1 {
+      0%, 100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(100px,-60px) scale(1.1); }
+      66% { transform: translate(-60px,80px) scale(0.9); }
+    }
+    @keyframes drift2 {
+      0%, 100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(-80px,-70px) scale(1.15); }
+      66% { transform: translate(100px,60px) scale(0.85); }
+    }
+    @keyframes drift3 {
+      0%, 100% { transform: translate(-50%,-50%) scale(1); }
+      50% { transform: translate(-50%,-50%) scale(1.15); }
+    }
+
+    .particles {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 1.5s ease;
+    }
+
+    .particles.visible { opacity: 1; }
+
+    .particle {
+      position: absolute;
+      width: 3px; height: 3px;
+      background: var(--particle-color);
+      border-radius: 50%;
+      opacity: 0.6;
+      box-shadow: 0 0 10px var(--particle-color), 0 0 5px var(--particle-color);
+      animation: rise 25s linear infinite;
+    }
+
+    @keyframes rise {
+      0% { transform: translateY(100vh) translateX(0) scale(0); opacity: 0; }
+      5% { opacity: 0.6; transform: translateY(95vh) translateX(10px) scale(1); }
+      95% { opacity: 0.4; transform: translateY(5vh) translateX(50px) scale(0.8); }
+      100% { transform: translateY(-5vh) translateX(70px) scale(0); opacity: 0; }
+    }
+
+    .container {
+      position: relative;
+      z-index: 10;
+      animation: fadeUp 1s ease-out;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(40px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .box {
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(156,136,255,0.14);
+      padding: 50px 45px;
+      border-radius: 24px;
+      box-shadow:
+        0 30px 60px rgba(0,0,0,0.5),
+        0 0 100px rgba(114,9,183,0.07);
+      text-align: center;
+      width: 520px;
+      max-width: 90vw;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .box:hover {
+      border-color: rgba(156,136,255,0.25);
+      box-shadow:
+        0 30px 60px rgba(0,0,0,0.5),
+        0 0 120px rgba(114,9,183,0.12);
+    }
+
+    .logo-wrapper {
+      width: 90px; height: 90px;
+      margin: 0 auto 30px;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: bob 3s ease-in-out infinite;
+      box-shadow:
+        0 20px 40px rgba(114,9,183,0.3),
+        0 0 60px rgba(114,9,183,0.15);
+    }
+
+    .logo-wrapper i {
+      width: 40px;
+      height: 40px;
+      color: #fff;
+    }
+
+    @keyframes bob {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-8px) scale(1.03); }
+    }
+
+    h2 {
+      font-size: 36px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff 0%, var(--accent-2) 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+      letter-spacing: -1px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 35px;
+      line-height: 1.7;
+      font-weight: 400;
+    }
+
+    .subtitle strong {
+      color: var(--accent-2);
+      font-weight: 600;
+    }
+
+    .subtitle .highlight {
+      color: #aaa;
+      font-weight: 500;
+    }
+
+    .instruction-box {
+      background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02));
+      border: 1px solid rgba(16,185,129,0.18);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 30px;
+      text-align: left;
+    }
+
+    .instruction-title {
+      color: #10b981;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .instruction-title i {
+      width: 16px;
+      height: 16px;
+    }
+
+    .instruction-steps {
+      color: #999;
+      font-size: 13px;
+      line-height: 1.8;
+      list-style: none;
+      counter-reset: inst;
+    }
+
+    .instruction-steps li {
+      counter-increment: inst;
+      position: relative;
+      padding-left: 32px;
+      margin-bottom: 4px;
+    }
+    .instruction-steps li:last-child { margin-bottom: 0; }
+    .instruction-steps li::before {
+      content: counter(inst);
+      position: absolute; left: 0; top: 2px;
+      width: 20px; height: 20px;
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.35);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #10b981;
+    }
+
+    .input-container {
+      position: relative;
+      margin-bottom: 20px;
+      min-height: 90px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .captcha-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .verify-btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      box-shadow:
+        0 10px 30px rgba(114,9,183,0.3),
+        0 0 60px rgba(114,9,183,0.08);
+      font-family: 'Inter', sans-serif;
+    }
+
+    .verify-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .verify-btn:hover {
+      transform: translateY(-3px);
+      box-shadow:
+        0 15px 40px rgba(114,9,183,0.4),
+        0 0 80px rgba(114,9,183,0.15);
+    }
+
+    .verify-btn:hover::before { left: 100%; }
+    .verify-btn:active { transform: translateY(-1px); }
+
+    .verify-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .verify-btn:disabled:hover {
+      transform: none;
+      box-shadow:
+        0 10px 30px rgba(114,9,183,0.3),
+        0 0 60px rgba(114,9,183,0.08);
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 16px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+      display: none;
+      animation: slideIn 0.3s ease;
+      text-align: left;
+    }
+
+    .status.show { display: block; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .status.loading {
+      background: rgba(251,191,36,0.12);
+      color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.25);
+      box-shadow: 0 0 20px rgba(251,191,36,0.08);
+    }
+
+    .status.error {
+      background: rgba(239,68,68,0.12);
+      color: #ef4444;
+      border: 1px solid rgba(239,68,68,0.25);
+      box-shadow: 0 0 20px rgba(239,68,68,0.08);
+    }
+
+    .status.success {
+      background: rgba(16,185,129,0.12);
+      color: #10b981;
+      border: 1px solid rgba(16,185,129,0.25);
+      box-shadow: 0 0 20px rgba(16,185,129,0.08);
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      border-top: 2px solid currentColor;
+      animation: spin 0.8s linear infinite;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .info-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #666;
+      margin-top: 20px;
+      font-weight: 500;
+    }
+
+    .info-badge i {
+      width: 16px;
+      height: 16px;
+    }
+
+    .access-denied { animation: shake 0.5s ease; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+
+    .denied-logo {
+      width: 90px; height: 90px;
+      margin: 0 auto 30px;
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: bob 3s ease-in-out infinite;
+      box-shadow:
+        0 20px 40px rgba(239,68,68,0.3),
+        0 0 60px rgba(239,68,68,0.15);
+    }
+
+    .denied-logo i {
+      width: 40px;
+      height: 40px;
+      color: #fff;
+    }
+
+    .denied-title {
+      font-size: 36px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ef4444, #f87171);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+      letter-spacing: -1px;
+    }
+
+    .denied-subtitle {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 30px;
+      line-height: 1.7;
+    }
+
+    .denied-subtitle strong { color: #ef4444; font-weight: 600; }
+    .denied-subtitle .highlight { color: #aaa; font-weight: 500; }
+
+    .denied-instruction-box {
+      background: linear-gradient(135deg, rgba(239,68,68,0.06), rgba(239,68,68,0.02));
+      border: 1px solid rgba(239,68,68,0.18);
+      border-radius: 14px;
+      padding: 16px 20px;
+      text-align: left;
+    }
+
+    .denied-instruction-title {
+      color: #ef4444;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .denied-instruction-title i {
+      width: 16px;
+      height: 16px;
+    }
+
+    .denied-instruction-steps {
+      color: #999;
+      font-size: 13px;
+      line-height: 1.8;
+      list-style: none;
+      counter-reset: dinst;
+    }
+
+    .denied-instruction-steps li {
+      counter-increment: dinst;
+      position: relative;
+      padding-left: 32px;
+      margin-bottom: 4px;
+    }
+    .denied-instruction-steps li:last-child { margin-bottom: 0; }
+    .denied-instruction-steps li::before {
+      content: counter(dinst);
+      position: absolute; left: 0; top: 2px;
+      width: 20px; height: 20px;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.35);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #ef4444;
+    }
+
+    .denied-status {
+      margin-top: 24px;
+      padding: 16px 20px;
+      border-radius: 12px;
+      background: rgba(239,68,68,0.12);
+      color: #ef4444;
+      border: 1px solid rgba(239,68,68,0.25);
+      font-size: 13px;
+      font-weight: 500;
+      text-align: left;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+      .box { padding: 40px 30px; width: 95vw; }
+      h2 { font-size: 30px; }
+      .logo-wrapper { width: 75px; height: 75px; }
+      .logo-wrapper i { width: 34px; height: 34px; }
+      .verify-btn { font-size: 14px; padding: 16px; }
+    }
+
+    @media (max-width: 480px) {
+      .box { padding: 35px 25px; }
+      h2 { font-size: 26px; }
+      .logo-wrapper { width: 70px; height: 70px; }
+      .logo-wrapper i { width: 30px; height: 30px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-lights" id="bgLights">
+    <div class="light light-1"></div>
+    <div class="light light-2"></div>
+    <div class="light light-3"></div>
+  </div>
+
+  <div class="particles" id="particles"></div>
+
+  <div class="container">
+    <div class="box" id="mainBox">
+      <div class="logo-wrapper">
+        <i data-lucide="shield-check"></i>
+      </div>
+      <h2>Quick Verification</h2>
+      <p class="subtitle">
+        Complete the <strong>captcha</strong> below to generate your access key.
+      </p>
+
+      <div class="instruction-box">
+        <div class="instruction-title">
+          <i data-lucide="list-ordered"></i>
+          <span>How it works</span>
+        </div>
+        <ol class="instruction-steps">
+          <li>Complete the captcha verification</li>
+          <li>Click "Generate Access Key"</li>
+          <li>Copy the key and paste it where needed</li>
+        </ol>
+      </div>
+
+      <div class="input-container">
+        <div id="captchaWrapper" class="captcha-wrapper">
+          <div class="cf-turnstile" data-sitekey="{{TURNSTILE_SITEKEY}}" data-callback="onCaptchaSuccess" data-theme="dark"></div>
+        </div>
+      </div>
+
+      <button class="verify-btn" onclick="getKey()" id="verifyBtn" disabled>
+        Generate Access Key
+      </button>
+
+      <div class="status" id="status"></div>
+
+      <div class="info-badge">
+        <i data-lucide="shield-check"></i>
+        <span>Secure verification</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var verificationToken = "{{VERIFICATION_TOKEN}}";
+    var isCaptchaVerified = false;
+    var captchaToken = null;
+
+    function initIcons() {
+      if (window.lucide && lucide.createIcons) {
+        lucide.createIcons();
+      } else {
+        setTimeout(initIcons, 50);
+      }
+    }
+
+    function createParticles() {
+      var c = document.getElementById('particles');
+      for (var i = 0; i < 20; i++) {
+        var p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random()*100+'%';
+        p.style.animationDelay = -(Math.random()*25)+'s';
+        p.style.animationDuration = (18+Math.random()*12)+'s';
+        var s = 2+Math.random()*2;
+        p.style.width = s+'px';
+        p.style.height = s+'px';
+        c.appendChild(p);
+      }
+    }
+
+    function showLights() {
+      document.getElementById('bgLights').classList.add('lights-visible');
+      document.getElementById('particles').classList.add('visible');
+    }
+
+    function checkAccess() {
+      if (!verificationToken || verificationToken === '' || verificationToken === '{{VERIFICATION_TOKEN}}') {
+        showAccessDenied();
+        return false;
+      }
+      return true;
+    }
+
+    function showAccessDenied() {
+      var box = document.getElementById('mainBox');
+      box.classList.add('access-denied');
+      box.style.borderColor = 'rgba(239,68,68,0.2)';
+      box.innerHTML =
+        '<div class="denied-logo"><i data-lucide="shield-x"></i></div>' +
+        '<h2 class="denied-title">Access Denied</h2>' +
+        '<p class="denied-subtitle">' +
+          'Direct access to this verification page is <strong>not permitted</strong>.<br>' +
+          'Please access through the authorized <span class="highlight">key system portal</span>.' +
+        '</p>' +
+        '<div class="denied-instruction-box">' +
+          '<div class="denied-instruction-title">' +
+            '<i data-lucide="alert-triangle"></i>' +
+            '<span>Proper Access Route</span>' +
+          '</div>' +
+          '<ol class="denied-instruction-steps">' +
+            '<li>Complete the key system challenge (Work.ink, LootLabs, or Linkvertise)</li>' +
+            '<li>You will be automatically redirected here</li>' +
+            '<li>Complete the captcha to generate the key</li>' +
+          '</ol>' +
+        '</div>' +
+        '<div class="denied-status">' +
+          '<strong>⛔ Unauthorized Access Detected</strong><br>' +
+          'You must complete the key system first.' +
+        '</div>';
+
+      var root = document.documentElement;
+      root.style.setProperty('--accent-1', '#dc2626');
+      root.style.setProperty('--accent-2', '#ef4444');
+      root.style.setProperty('--particle-color', '#ef4444');
+
+      var particles = document.querySelectorAll('.particle');
+      for (var i = 0; i < particles.length; i++) {
+        particles[i].style.background = '#ef4444';
+        particles[i].style.boxShadow = '0 0 10px #ef4444, 0 0 5px #ef4444';
+      }
+
+      initIcons();
+    }
+
+    function onCaptchaSuccess(token) {
+      captchaToken = token;
+      isCaptchaVerified = true;
+      document.getElementById('verifyBtn').disabled = false;
+    }
+
+    function setStatus(message, type) {
+      var el = document.getElementById('status');
+      el.className = 'status ' + type;
+      el.innerHTML = message;
+      if (type) {
+        el.classList.add('show');
+      } else {
+        el.classList.remove('show');
+      }
+    }
+
+    async function getKey() {
+      var btn = document.getElementById('verifyBtn');
+
+      if (!isCaptchaVerified || !captchaToken) {
+        setStatus('⚠️ Please complete the captcha first', 'error');
+        return;
+      }
+
+      if (!verificationToken || verificationToken === '' || verificationToken === '{{VERIFICATION_TOKEN}}') {
+        setStatus('⚠️ Session expired or invalid. Please complete the key system again.', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="loading-spinner"></div>Generating Key...';
+      setStatus('<div class="loading-spinner"></div>Generating your access key...', 'loading');
+
+      try {
+        var res = await fetch('/create?token=' + encodeURIComponent(verificationToken) + '&captcha=' + encodeURIComponent(captchaToken));
+        var link = await res.text();
+
+        if (res.ok) {
+          verificationToken = null;
+          setStatus('✓ Access key generated successfully! Redirecting...', 'success');
+          setTimeout(function() {
+            window.location.href = link;
+          }, 1500);
+        } else {
+          setStatus('✗ ' + link, 'error');
+          btn.disabled = false;
+          btn.innerHTML = 'Generate Access Key';
+        }
+      } catch (err) {
+        setStatus('✗ Network error. Please check your connection and try again.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = 'Generate Access Key';
+      }
+    }
+
+    document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    document.addEventListener('keydown', function(e){
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && /^[IJC]$/i.test(e.key)) ||
+        (e.ctrlKey && e.key.toLowerCase() === 'u')
+      ) e.preventDefault();
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      createParticles();
+      showLights();
+      if (checkAccess()) {
+        initIcons();
+      }
+    });
+  </script>
+</body>
+</html>
