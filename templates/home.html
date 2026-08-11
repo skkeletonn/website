@@ -3217,28 +3217,40 @@ class AutoShowcasersManager {
       }
 
       async findAllChannels() {
+        // Served statically from the backend so a slow/throttled YouTube can
+        // never hang the homepage. Falls back to the live scraper only if the
+        // static endpoint is unavailable, with a short timeout.
+        try {
+          const response = await fetch('/api/showcasers', { cache: 'force-cache' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          this.channels = data.channels || [];
+          if (this.channels.length) {
+            console.log(`Loaded ${this.channels.length} showcasers (static)`);
+            return;
+          }
+          throw new Error('empty');
+        } catch (error) {
+          console.warn('Static showcaser load failed, trying live:', error);
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
         try {
           const response = await fetch('/api/find-channels', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              usernames: this.usernames
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usernames: this.usernames }),
+            signal: controller.signal
           });
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
-
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const data = await response.json();
           this.channels = data.channels || [];
-
-          console.log(`Found ${this.channels.length} channels:`, this.channels);
         } catch (error) {
           console.error('Error finding channels:', error);
           this.channels = this.createFallbackChannels();
+        } finally {
+          clearTimeout(timeout);
         }
       }
 
@@ -3689,5 +3701,5 @@ class AutoShowcasersManager {
 		</script>
 
 
-	</body>
+	<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a29a9eb16b312a09',t:'MTc4NjQ4Njc0NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
