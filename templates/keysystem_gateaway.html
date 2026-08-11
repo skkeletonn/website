@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Key System - {{GUILD_NAME}}</title>
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --accent-1: #7209b7;
+      --accent-2: #9c88ff;
+      --accent-glow: rgba(114, 9, 183, 0.5);
+      --particle-color: #a45cff;
+    }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .bg-lights {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .light {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(150px);
+      opacity: 0.45;
+    }
+
+    .light-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, var(--accent-1) 0%, transparent 70%);
+      top: -15%; left: -10%;
+      animation: drift1 18s ease-in-out infinite;
+    }
+
+    .light-2 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, var(--accent-2) 0%, transparent 70%);
+      bottom: -18%; right: -12%;
+      animation: drift2 18s ease-in-out infinite;
+      animation-delay: -6s;
+    }
+
+    .light-3 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, var(--accent-1) 0%, transparent 60%);
+      top: 45%; left: 50%;
+      transform: translate(-50%, -50%);
+      animation: drift3 22s ease-in-out infinite;
+      animation-delay: -3s;
+      opacity: 0.2;
+    }
+
+    @keyframes drift1 {
+      0%, 100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(100px,-60px) scale(1.1); }
+      66% { transform: translate(-60px,80px) scale(0.9); }
+    }
+    @keyframes drift2 {
+      0%, 100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(-80px,-70px) scale(1.15); }
+      66% { transform: translate(100px,60px) scale(0.85); }
+    }
+    @keyframes drift3 {
+      0%, 100% { transform: translate(-50%,-50%) scale(1); }
+      50% { transform: translate(-50%,-50%) scale(1.15); }
+    }
+
+    .particles {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .particle {
+      position: absolute;
+      width: 3px; height: 3px;
+      background: var(--particle-color);
+      border-radius: 50%;
+      opacity: 0.6;
+      box-shadow: 0 0 10px var(--particle-color), 0 0 5px var(--particle-color);
+      animation: rise 25s linear infinite;
+    }
+
+    @keyframes rise {
+      0% { transform: translateY(100vh) translateX(0) scale(0); opacity: 0; }
+      5% { opacity: 0.6; transform: translateY(95vh) translateX(10px) scale(1); }
+      95% { opacity: 0.4; transform: translateY(5vh) translateX(50px) scale(0.8); }
+      100% { transform: translateY(-5vh) translateX(70px) scale(0); opacity: 0; }
+    }
+
+    .container {
+      position: relative;
+      z-index: 10;
+      width: 90%;
+      max-width: 520px;
+      animation: fadeUp 0.8s ease-out;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(156,136,255,0.14);
+      border-radius: 24px;
+      padding: 40px 36px;
+      box-shadow:
+        0 25px 50px rgba(0,0,0,0.5),
+        0 0 80px rgba(114,9,183,0.07);
+      transition: border-color 0.3s;
+    }
+    .card:hover { border-color: rgba(156,136,255,0.25); }
+
+    .header { text-align: center; margin-bottom: 26px; }
+
+    .logo-wrapper {
+      width: 72px; height: 72px;
+      margin: 0 auto 18px;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: bob 3s ease-in-out infinite;
+      box-shadow:
+        0 15px 35px rgba(114,9,183,0.35),
+        0 0 50px rgba(114,9,183,0.15);
+    }
+
+    .logo-wrapper i {
+      width: 32px;
+      height: 32px;
+      color: #fff;
+    }
+
+    @keyframes bob {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-6px) scale(1.02); }
+    }
+
+    .header h1 {
+      font-size: 26px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, var(--accent-2));
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .header p { font-size: 14px; color: #888; line-height: 1.6; }
+    .guild-name { color: var(--accent-2); font-weight: 600; }
+
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .step {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      transition: all 0.4s;
+    }
+
+    .step.active {
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(114,9,183,0.4);
+    }
+    .step.inactive {
+      background: rgba(156,136,255,0.08);
+      color: #555;
+      border: 1px solid rgba(156,136,255,0.15);
+    }
+    .step.done {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(16,185,129,0.3);
+    }
+
+    .step-line {
+      width: 38px; height: 2px;
+      background: rgba(156,136,255,0.15);
+      border-radius: 1px;
+    }
+
+    .vpn-warning {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(251,191,36,0.03));
+      border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      animation: warnPulse 3s ease-in-out infinite;
+    }
+    @keyframes warnPulse {
+      0%, 100% { box-shadow: 0 0 15px rgba(251,191,36,0.04); }
+      50% { box-shadow: 0 0 25px rgba(251,191,36,0.1); }
+    }
+
+    .vpn-warning-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .vpn-warning-content { flex: 1; }
+    .vpn-warning-title {
+      color: #fbbf24; font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
+    }
+    .vpn-warning-text { color: #d4a574; font-size: 12px; line-height: 1.6; }
+    .vpn-warning-text strong { color: #fbbf24; font-weight: 600; }
+
+    .instruction-box {
+      background: linear-gradient(135deg, rgba(16,185,129,0.07), rgba(16,185,129,0.02));
+      border: 1px solid rgba(16,185,129,0.18);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 22px;
+    }
+
+    .instruction-title {
+      color: #10b981;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .instruction-title i {
+      width: 16px;
+      height: 16px;
+    }
+
+    .instruction-steps {
+      color: #aaa; font-size: 13px; line-height: 1.8;
+      list-style: none; counter-reset: inst;
+    }
+    .instruction-steps li {
+      counter-increment: inst;
+      position: relative;
+      padding-left: 32px;
+      margin-bottom: 4px;
+    }
+    .instruction-steps li:last-child { margin-bottom: 0; }
+    .instruction-steps li::before {
+      content: counter(inst);
+      position: absolute; left: 0; top: 2px;
+      width: 20px; height: 20px;
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.35);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #10b981;
+    }
+
+    .providers {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .provider-btn {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px;
+      border: none;
+      border-radius: 14px;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .provider-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s ease;
+    }
+    .provider-btn:hover::before { left: 100%; }
+
+    .provider-btn.workink {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      box-shadow: 0 8px 25px rgba(37,99,235,0.3);
+    }
+    .provider-btn.workink:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(37,99,235,0.45);
+    }
+
+    .provider-btn.lootlabs {
+      background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+      box-shadow: 0 8px 25px rgba(124,58,237,0.3);
+    }
+    .provider-btn.lootlabs:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(124,58,237,0.45);
+    }
+
+    .provider-btn.linkvertise {
+      background: linear-gradient(135deg, #059669, #10b981);
+      box-shadow: 0 8px 25px rgba(5,150,105,0.3);
+    }
+    .provider-btn.linkvertise:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(5,150,105,0.45);
+    }
+
+    .provider-btn.disabled {
+      opacity: 0.3;
+      pointer-events: none;
+      cursor: default;
+      transform: none !important;
+    }
+
+    .provider-logo {
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
+      flex-shrink: 0;
+      border-radius: 4px;
+    }
+
+    .provider-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+
+    .provider-name { font-size: 15px; font-weight: 700; }
+    .provider-tag {
+      font-size: 11px; font-weight: 500;
+      opacity: 0.75; margin-top: 1px;
+    }
+
+    .status-bar {
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .status-bar.loading {
+      background: rgba(251,191,36,0.1);
+      color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.2);
+    }
+    .status-bar.ready {
+      background: rgba(16,185,129,0.1);
+      color: #10b981;
+      border: 1px solid rgba(16,185,129,0.2);
+    }
+    .status-bar.error {
+      background: rgba(239,68,68,0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.12);
+      border-radius: 50%;
+      border-top: 2px solid currentColor;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .info-badges {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+      justify-content: center;
+    }
+
+    .info-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 11px;
+      color: #666;
+      font-weight: 500;
+    }
+
+    .info-badge i {
+      width: 14px;
+      height: 14px;
+    }
+
+    .note {
+      text-align: center;
+      font-size: 11px;
+      color: #4a4a4a;
+      margin-top: 16px;
+      line-height: 1.6;
+    }
+    .note strong { color: #777; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 560px) {
+      .card { padding: 30px 22px; border-radius: 20px; }
+      .header h1 { font-size: 22px; }
+      .logo-wrapper { width: 60px; height: 60px; border-radius: 15px; }
+      .logo-wrapper i { width: 28px; height: 28px; }
+      .provider-btn { padding: 14px 16px; }
+      .info-badges { flex-direction: column; align-items: center; }
+      .vpn-warning { padding: 12px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-lights">
+    <div class="light light-1"></div>
+    <div class="light light-2"></div>
+    <div class="light light-3"></div>
+  </div>
+
+  <div class="particles" id="particles"></div>
+
+  <div class="container">
+    <div class="card">
+
+      <div class="header">
+        <div class="logo-wrapper">
+          <i data-lucide="key-round"></i>
+        </div>
+        <h1>Key Verification</h1>
+        <p>Complete a task for <span class="guild-name">{{GUILD_NAME}}</span></p>
+      </div>
+
+      <div class="step-indicator">
+        <div class="step active" id="step1">1</div>
+        <div class="step-line"></div>
+        <div class="step inactive" id="step2">2</div>
+        <div class="step-line"></div>
+        <div class="step inactive" id="step3">3</div>
+      </div>
+
+      <div class="vpn-warning">
+        <div class="vpn-warning-icon">⚠️</div>
+        <div class="vpn-warning-content">
+          <div class="vpn-warning-title">VPN / Proxy Notice</div>
+          <div class="vpn-warning-text">
+            Please <strong>disable any VPN or proxy</strong> before continuing and
+            <strong>keep it off</strong> during the entire verification process.
+          </div>
+        </div>
+      </div>
+
+      <div class="instruction-box">
+        <div class="instruction-title">
+          <i data-lucide="list-ordered"></i>
+          <span>How it works</span>
+        </div>
+        <ol class="instruction-steps">
+          <li>Choose a verification provider below</li>
+          <li>Complete the quick task (~2 min)</li>
+          <li>Return to Discord and click <strong style="color:#ccc;">Claim Key</strong></li>
+        </ol>
+      </div>
+
+      <div id="provider-section">
+        <div class="providers">
+          <a class="provider-btn workink {{WORKINK_DISABLED}}" id="btn-workink"
+             href="javascript:void(0)" data-provider="workink">
+            <img src="https://s3-eu-west-1.amazonaws.com/tpd/logos/60f32c3fa0f0500001ab7c87/0x0.png" class="provider-logo" alt="Work.ink">
+            <div class="provider-info">
+              <span class="provider-name">Work.ink</span>
+              <span class="provider-tag">Recommended · Fastest</span>
+            </div>
+          </a>
+          <a class="provider-btn lootlabs {{LOOTLABS_DISABLED}}" id="btn-lootlabs"
+             href="javascript:void(0)" data-provider="lootlabs">
+            <img src="https://i.imgur.com/DmPISjf.png" class="provider-logo" alt="LootLabs">
+            <div class="provider-info">
+              <span class="provider-name">LootLabs</span>
+              <span class="provider-tag">Alternative</span>
+            </div>
+          </a>
+          <a class="provider-btn linkvertise {{LINKVERTISE_DISABLED}}" id="btn-linkvertise"
+             href="javascript:void(0)" data-provider="linkvertise">
+            <img src="https://cdn3.emoji.gg/emojis/20379-linkvertise.png" class="provider-logo" alt="Linkvertise">
+            <div class="provider-info">
+              <span class="provider-name">Linkvertise</span>
+              <span class="provider-tag">Alternative</span>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <div class="status-bar loading" id="status">
+        <span class="loading-spinner"></span>
+        <span>Initializing session…</span>
+      </div>
+
+      <div class="info-badges">
+        <div class="info-badge">
+          <i data-lucide="clock"></i>
+          <span>Takes ~2 minutes</span>
+        </div>
+        <div class="info-badge">
+          <i data-lucide="shield-check"></i>
+          <span>Secure verification</span>
+        </div>
+      </div>
+
+      <div class="note">
+        Do not close this page until you are redirected.<br>
+        Your key will be delivered via the <strong>bot in Discord</strong>.
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function initIcons() {
+      if (window.lucide && lucide.createIcons) {
+        lucide.createIcons();
+      } else {
+        setTimeout(initIcons, 50);
+      }
+    }
+
+    (function(){
+      var c = document.getElementById('particles');
+      for (var i = 0; i < 22; i++) {
+        var p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random()*100+'%';
+        p.style.animationDelay = -(Math.random()*25)+'s';
+        p.style.animationDuration = (18+Math.random()*12)+'s';
+        var s = 2+Math.random()*2;
+        p.style.width = s+'px';
+        p.style.height = s+'px';
+        c.appendChild(p);
+      }
+    })();
+
+    (function(){
+      var SESSION_TOKEN = "{{SESSION_TOKEN}}";
+      var GUILD_ID = "{{GUILD_ID}}";
+      var timerReady = false;
+
+      fetch('/ks/timer/' + SESSION_TOKEN)
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.success) {
+            timerReady = true;
+            var s = document.getElementById('status');
+            s.className = 'status-bar ready';
+            s.innerHTML = '✅ <span>Ready — choose a provider above</span>';
+            document.getElementById('step1').className = 'step done';
+            document.getElementById('step2').className = 'step active';
+          } else {
+            var s = document.getElementById('status');
+            s.className = 'status-bar error';
+            s.textContent = '❌ ' + (d.error || 'Session error');
+          }
+        })
+        .catch(function(){
+          var s = document.getElementById('status');
+          s.className = 'status-bar error';
+          s.textContent = '❌ Failed to connect to server';
+        });
+
+      var btns = document.querySelectorAll('.provider-btn:not(.disabled)');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].addEventListener('click', function(e){
+          e.preventDefault();
+          if (!timerReady) return;
+
+          var provider = this.dataset.provider;
+          var s = document.getElementById('status');
+          s.className = 'status-bar loading';
+          s.innerHTML = '<span class="loading-spinner"></span> <span>Redirecting to '+provider+'…</span>';
+
+          var all = document.querySelectorAll('.provider-btn');
+          for (var j = 0; j < all.length; j++) all[j].classList.add('disabled');
+
+          document.getElementById('step2').className = 'step done';
+          document.getElementById('step3').className = 'step active';
+
+          setTimeout(function(){
+            window.location.href = '/ks/redirect/' + SESSION_TOKEN + '/' + provider;
+          }, 600);
+        });
+      }
+
+      document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+      document.addEventListener('keydown', function(e){
+        if (
+          e.key === 'F12' ||
+          (e.ctrlKey && e.shiftKey && /^[IJC]$/i.test(e.key)) ||
+          (e.ctrlKey && e.key.toLowerCase() === 'u')
+        ) e.preventDefault();
+      });
+    })();
+
+    initIcons();
+  </script>
+</body>
+</html>
