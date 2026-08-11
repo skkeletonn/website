@@ -2,18 +2,40 @@ import requests
 import re
 import time
 import logging
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+import socket
+import threading
+from urllib3.util import connection as urllib3_connection
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout, as_completed
 from flask import jsonify
 from urllib.parse import quote_plus
+_orig_create_connection = urllib3_connection.create_connection
+
+
+def _ipv4_create_connection(address, *args, **kwargs):
+    host, port = address
+    infos = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+    for family, socktype, proto, _canonname, sockaddr in infos:
+        try:
+            sock = socket.socket(family, socktype, proto)
+            sock.settimeout(kwargs.get('timeout'))
+            sock.connect(sockaddr)
+            return sock
+        except OSError:
+            try:
+                sock.close()
+            except Exception:
+                pass
+            continue
+    raise OSError(f"Could not connect to {host}:{port} over IPv4")
+
+
+urllib3_connection.create_connection = _ipv4_create_connection
 
 logger = logging.getLogger(__name__)
 
 PER_USER_TIMEOUT = 8
-
 BATCH_TIMEOUT = 12
-
 MAX_WORKERS = 8
-
 
 class YouTubeChannelFinder:
     def __init__(self):
@@ -50,6 +72,31 @@ class YouTubeChannelFinder:
         }
         return data
 
+    def _lookup_with_timeout(self, username):
+        """Run one username lookup with a hard wall-clock cap.
+
+        The per-request socket timeouts inside _find_channel_blocking aren't
+        enough on their own: CPython's DNS resolver (getaddrinfo) can hold the
+        GIL and ignore those timeouts. We run the work in a short-lived thread
+        and join with PER_USER_TIMEOUT so a hung DNS call can never outlive
+        its budget or freeze the request.
+        """
+        result = {'value': self._fallback(username)}
+
+        def _work():
+            try:
+                result['value'] = self._find_channel_blocking(username)
+            except Exception as e:
+                logger.debug(f"Lookup thread crashed for '{username}': {e}")
+                result['value'] = self._fallback(username)
+
+        t = threading.Thread(target=_work, daemon=True)
+        t.start()
+        t.join(PER_USER_TIMEOUT)
+        if t.is_alive():
+            logger.warning(f"YouTube lookup exceeded {PER_USER_TIMEOUT}s for '{username}'")
+        return result['value']
+
     def _find_channel_blocking(self, username):
         possible_urls = [
             f"https://www.youtube.com/@{username}",
@@ -61,7 +108,7 @@ class YouTubeChannelFinder:
         for url in possible_urls:
             try:
                 response = self.session.get(
-                    url, timeout=(3, 5), allow_redirects=True
+                    url, timeout=(2, 4), allow_redirects=True
                 )
                 if response.status_code == 200 and 'youtube.com' in response.url:
                     channel_data = self.extract_channel_data(
@@ -135,7 +182,6 @@ class YouTubeChannelFinder:
             for match in matches:
                 img_url = match.group(1)
                 img_url = img_url.replace('\\u003d', '=').replace('\\', '')
-
                 if self._looks_like_image_url(img_url):
                     return img_url
 
@@ -164,7 +210,7 @@ class YouTubeChannelFinder:
                 f"https://www.youtube.com/results?search_query="
                 f"{quote_plus(username)}&sp=EgIQAg%253D%253D"
             )
-            response = self.session.get(search_url, timeout=(3, 5))
+            response = self.session.get(search_url, timeout=(2, 4))
 
             if response.status_code != 200:
                 return None
@@ -180,7 +226,7 @@ class YouTubeChannelFinder:
             for link in all_links[:2]:
                 try:
                     channel_response = self.session.get(
-                        link, timeout=(3, 5)
+                        link, timeout=(2, 4)
                     )
                     if channel_response.status_code == 200:
                         channel_data = self.extract_channel_data(
@@ -219,29 +265,27 @@ class YouTubeChannelFinder:
 
         if live:
             pool = ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(live)))
+            future_to_user = {}
             try:
-                future_to_user = {
-                    pool.submit(self._find_channel_blocking, u): u for u in live
-                }
-                deadline = time.time() + BATCH_TIMEOUT
-                for future, user in future_to_user.items():
-                    remaining = max(0.1, deadline - time.time())
+                for u in live:
+                    future_to_user[pool.submit(self._lookup_with_timeout, u)] = u
+
+                for future in as_completed(future_to_user, timeout=BATCH_TIMEOUT):
+                    user = future_to_user[future]
                     try:
-                        results[user] = future.result(timeout=remaining)
-                    except FuturesTimeout:
-                        logger.warning(
-                            f"YouTube lookup timed out for '{user}'"
-                        )
+                        results[user] = future.result()
+                    except Exception as e:
+                        logger.warning(f"YouTube lookup failed for '{user}': {e}")
+                        results[user] = self._fallback(user)
+            except FuturesTimeout:
+                logger.warning(
+                    "YouTube batch hit deadline; returning fallbacks for stragglers"
+                )
+                for future, user in future_to_user.items():
+                    if not future.done():
                         future.cancel()
                         results[user] = self._fallback(user)
-                    except Exception as e:
-                        logger.warning(
-                            f"YouTube lookup failed for '{user}': {e}"
-                        )
-                        results[user] = self._fallback(user)
             finally:
-
                 pool.shutdown(wait=False)
-
         channels = [results[u] for u in cleaned]
         return jsonify({'channels': channels})
