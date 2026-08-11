@@ -6,7 +6,12 @@ keys_collection = None
 
 if MONGODB_URI:
     try:
-        client = MongoClient(MONGODB_URI)
+        client = MongoClient(
+            MONGODB_URI,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+            socketTimeoutMS=10000,
+        )
         db = client["vadrifts"]
         keys_collection = db["discord_keys"]
         client.admin.command('ping')
