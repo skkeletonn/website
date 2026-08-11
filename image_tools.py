@@ -186,6 +186,14 @@ def remove_bg_endpoint(req=None):
     rgba = img.convert('RGBA')
     pixels = rgba.load()
     w, h = rgba.size
+
+    REMOVE_BG_MAX_PIXELS = 2_000_000 
+    if w * h > REMOVE_BG_MAX_PIXELS:
+        scale = (REMOVE_BG_MAX_PIXELS / float(w * h)) ** 0.5
+        nw, nh = max(1, int(w * scale)), max(1, int(h * scale))
+        rgba = rgba.resize((nw, nh), Image.LANCZOS)
+        pixels = rgba.load()
+        w, h = nw, nh
     corners = [pixels[0, 0], pixels[w-1, 0], pixels[0, h-1], pixels[w-1, h-1]]
     cr = sum(p[0] for p in corners) / 4
     cg = sum(p[1] for p in corners) / 4
