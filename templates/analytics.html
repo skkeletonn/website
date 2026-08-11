@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vadrifts Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background: #0a0a0a;
+            color: #dcddde;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2b2d31; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f4147; }
+
+        .gradient-bg {
+            position: fixed; inset: 0; pointer-events: none; z-index: 0;
+            background: linear-gradient(180deg,
+                #4a4a4a 0%, #494949 3%, #464646 5%, #444444 7%, #414141 9%,
+                #3e3e3e 11%, #3b3b3b 14%, #383838 17%, #353535 20%, #323232 23%,
+                #2f2f2f 27%, #2c2c2c 31%, #282828 35%, #242424 40%, #202020 45%,
+                #1c1c1c 50%, #181818 56%, #141414 62%, #101010 69%, #0c0c0c 76%,
+                #0a0a0a 84%, #0a0a0a 100%);
+        }
+
+        .line-pattern {
+            position: fixed; inset: 0; pointer-events: none; z-index: 1;
+            background:
+                repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(255,255,255,0.012) 80px, rgba(255,255,255,0.012) 81px),
+                repeating-linear-gradient(0deg, transparent, transparent 80px, rgba(255,255,255,0.012) 80px, rgba(255,255,255,0.012) 81px);
+        }
+
+        .title-bar {
+            position: fixed; top: 0; left: 0; right: 0; height: 52px;
+            background: rgba(18,18,20,0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255,255,255,0.08); z-index: 100;
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+        }
+        .title-bar img { width: 24px; height: 24px; border-radius: 6px; object-fit: contain; }
+        .title-bar span { font-size: 14px; font-weight: 600; color: #9b9da2; letter-spacing: -0.01em; }
+
+        .page { position: relative; z-index: 10; max-width: 1100px; margin: 0 auto; padding: 96px 32px 96px; }
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 48px; }
+
+        .status-pill {
+            display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 10px;
+            font-size: 13px; font-weight: 600;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
+        }
+        .status-pill.live { background: #1a2f23; color: #3ba55d; }
+        .status-pill.offline { background: #2f1a1a; color: #ed4245; }
+        .status-pill.connecting { background: #2f2a1a; color: #faa61a; }
+
+        .pulse-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse-glow 2s ease-in-out infinite; }
+        .pulse-dot.green { background: #3ba55d; }
+        .pulse-dot.red { background: #ed4245; animation: none; }
+        .pulse-dot.yellow { background: #faa61a; }
+        @keyframes pulse-glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .refresh-btn {
+            display: flex; align-items: center; gap: 10px; padding: 10px 22px;
+            background: #5865F2; border: none; border-radius: 10px; color: #fff;
+            font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+            box-shadow: 0 2px 12px rgba(88,101,242,0.3);
+            transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+        }
+        .refresh-btn:hover { background: #4752c4; box-shadow: 0 4px 20px rgba(88,101,242,0.4); transform: translateY(-1px); }
+        .refresh-btn:active { background: #3c45a5; transform: translateY(0); }
+        .refresh-btn svg { width: 16px; height: 16px; }
+
+        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+
+        .card {
+            background: rgba(18,18,20,0.55); border: 1px solid rgba(255,255,255,0.06);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border-radius: 12px; transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        .metric-card { padding: 24px; cursor: default; }
+        .metric-card:hover {
+            border-color: rgba(255,255,255,0.12); background: rgba(24,24,27,0.65);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+            transform: translateY(-2px);
+        }
+
+        .metric-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .metric-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #b5bac1; }
+        .metric-value { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; color: #fff; line-height: 1; }
+        .metric-sub { margin-top: 12px; font-size: 13px; color: #80848e; }
+
+        .trend-badge { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; }
+        .trend-badge.up { color: #23a559; }
+        .trend-badge.down { color: #ed4245; }
+        .trend-badge svg { width: 14px; height: 14px; }
+
+        .section-card { margin-bottom: 20px; }
+        .section-header { padding: 24px 32px; }
+        .section-title { font-size: 16px; font-weight: 600; color: #fff; }
+        .section-sub { margin-top: 4px; font-size: 13px; color: #80848e; }
+        .section-legend { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #b5bac1; }
+        .section-legend .dot { width: 10px; height: 10px; border-radius: 50%; background: #5865F2; }
+
+        .chart-wrap { height: 320px; padding: 0 32px 24px; user-select: none; -webkit-user-select: none; -moz-user-select: none; }
+        .chart-wrap canvas, .expand-chart canvas { user-select: none; -webkit-user-select: none; -moz-user-select: none; }
+
+        .scripts-card .table-header {
+            display: flex; align-items: center; gap: 16px; padding: 14px 32px;
+            font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6d6f78;
+            border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .col-rank { width: 40px; text-align: center; flex-shrink: 0; }
+        .col-name { flex: 1; min-width: 0; }
+        .col-spark { width: 80px; text-align: center; flex-shrink: 0; }
+        .col-trend { width: 70px; text-align: center; flex-shrink: 0; }
+        .col-count { width: 100px; text-align: right; flex-shrink: 0; }
+        .col-arrow { width: 28px; flex-shrink: 0; }
+
+        .script-list { padding: 12px 0; }
+
+        .script-wrapper {
+            margin: 4px 8px; border-radius: 8px; overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+        .script-wrapper:hover { background: rgba(79,84,92,0.08); }
+        .script-wrapper.active {
+            background: rgba(88,101,242,0.08);
+            box-shadow: 0 0 0 1px rgba(88,101,242,0.2), 0 4px 24px rgba(88,101,242,0.1);
+        }
+
+        .script-row {
+            display: flex; align-items: center; gap: 16px; padding: 20px 24px;
+            cursor: pointer; border: none; background: none; width: 100%;
+            text-align: left; font-family: inherit; color: inherit; outline: none;
+        }
+
+        .script-rank { font-size: 14px; font-weight: 700; color: #6d6f78; font-variant-numeric: tabular-nums; }
+        .script-name { font-size: 15px; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .spark-container {
+            width: 80px;
+            height: 28px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .script-trend { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; }
+        .script-trend.up { color: #3ba55d; }
+        .script-trend.down { color: #ed4245; }
+        .script-trend svg { width: 12px; height: 12px; }
+
+        .script-count { font-size: 15px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+
+        .script-arrow { display: flex; align-items: center; justify-content: center; transition: transform 0.3s ease; }
+        .script-arrow svg { width: 20px; height: 20px; color: #6d6f78; transition: color 0.2s; }
+        .script-wrapper.active .script-arrow svg { color: #5865F2; }
+        .script-wrapper.active .script-arrow { transform: rotate(180deg); }
+
+        .script-expand { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.4s cubic-bezier(0.4,0,0.2,1); }
+        .script-expand.open { grid-template-rows: 1fr; }
+        .script-expand-overflow { overflow: hidden; }
+
+        .expand-content {
+            padding: 4px 24px 24px; opacity: 0; transform: translateY(-12px);
+            transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s;
+        }
+        .script-expand.open .expand-content { opacity: 1; transform: translateY(0); }
+
+        .expand-label { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .expand-label span:first-child { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #b5bac1; }
+        .expand-label span:nth-child(2) { font-size: 12px; color: #6d6f78; }
+        .expand-label span:last-child { font-size: 12px; color: #80848e; }
+
+        .expand-chart { height: 140px; margin-bottom: 24px; user-select: none; -webkit-user-select: none; }
+
+        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+        .stat-box {
+            background: rgba(30,31,34,0.5); border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 10px; padding: 20px; text-align: center; transition: all 0.25s ease;
+        }
+        .stat-box:hover { border-color: rgba(255,255,255,0.1); background: rgba(35,36,40,0.6); transform: translateY(-1px); }
+
+        .stat-val { font-size: 22px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; line-height: 1; }
+        .stat-lbl { margin-top: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #80848e; }
+
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 192px 20px; }
+
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid #2b2d31; border-top-color: #5865F2;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading span { margin-top: 20px; font-size: 14px; color: #80848e; }
+
+        .toast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(16px);
+            padding: 12px 20px; background: #111214; border: 1px solid #1e1f22; border-radius: 10px;
+            font-size: 13px; font-weight: 500; color: #dcddde; opacity: 0; pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast-inner { display: flex; align-items: center; gap: 10px; }
+        .toast-icon { width: 20px; height: 20px; border-radius: 50%; background: #23a559; display: flex; align-items: center; justify-content: center; }
+        .toast-icon svg { width: 12px; height: 12px; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .anim { animation: fadeInUp 0.5s cubic-bezier(0.4,0,0.2,1) forwards; opacity: 0; }
+        .anim-d1 { animation-delay: 0.05s; }
+        .anim-d2 { animation-delay: 0.1s; }
+        .anim-d3 { animation-delay: 0.15s; }
+        .anim-d4 { animation-delay: 0.2s; }
+        .anim-d5 { animation-delay: 0.25s; }
+        .anim-d6 { animation-delay: 0.3s; }
+
+        @media (max-width: 900px) {
+            .metrics { grid-template-columns: repeat(2, 1fr); }
+            .stat-grid { grid-template-columns: repeat(2, 1fr); }
+            .col-spark, .col-trend { display: none; }
+            .spark-container, .script-trend { display: none !important; }
+        }
+        @media (max-width: 600px) {
+            .page { padding: 80px 16px 64px; }
+            .metrics { grid-template-columns: 1fr; }
+            .header { flex-direction: column; align-items: flex-start; gap: 16px; }
+            .metric-value { font-size: 28px; }
+            .section-header { padding: 20px; }
+            .chart-wrap { padding: 0 20px 20px; height: 240px; }
+            .table-header { padding: 14px 20px; }
+            .script-row { padding: 16px 16px; gap: 12px; }
+            .expand-content { padding: 4px 16px 20px; }
+            .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="gradient-bg"></div>
+    <div class="line-pattern"></div>
+    <div class="title-bar">
+        <img src="https://i.imgur.com/ePueN25.png" alt="Logo">
+        <span>Vadrifts analytics</span>
+    </div>
+    <div class="page">
+        <div class="header">
+            <div id="status-container">
+                <div class="status-pill connecting" id="status-pill">
+                    <span class="pulse-dot yellow"></span>
+                    <span id="status-text">Connecting...</span>
+                </div>
+            </div>
+            <button class="refresh-btn" onclick="load(true)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                    <path d="M14 8A6 6 0 112.5 5.5"/>
+                    <path d="M2 2v4h4" stroke-linejoin="round"/>
+                </svg>
+                Refresh
+            </button>
+        </div>
+        <div id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                <span>Loading analytics...</span>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast">
+        <div class="toast-inner">
+            <div class="toast-icon">
+                <svg viewBox="0 0 12 12" fill="none"><path d="M2.5 6.5l2.5 2.5 5-5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <span id="toast-text"></span>
+        </div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+        var mainChart = null;
+        var sparklineCharts = {};
+        var scriptCharts = {};
+        var data = null;
+        var expanded = null;
+
+        function toast(msg) {
+            var el = document.getElementById('toast');
+            document.getElementById('toast-text').textContent = msg;
+            el.classList.add('show');
+            setTimeout(function() { el.classList.remove('show'); }, 3000);
+        }
+
+        function setStatus(state, msg) {
+            var pill = document.getElementById('status-pill');
+            var dot = pill.querySelector('.pulse-dot');
+            var text = document.getElementById('status-text');
+            pill.className = 'status-pill ' + state;
+            dot.className = 'pulse-dot ' + (state === 'live' ? 'green' : state === 'offline' ? 'red' : 'yellow');
+            text.textContent = msg;
+        }
+
+        function sumSlice(arr, from, to) {
+            var s = 0;
+            var slice = arr.slice(from, to);
+            for (var i = 0; i < slice.length; i++) s += slice[i];
+            return s;
+        }
+
+        function trendHTML(current, previous) {
+            if (!previous || previous === 0) return '';
+            var pct = ((current - previous) / previous) * 100;
+            var isUp = pct >= 0;
+            var cls = isUp ? 'up' : 'down';
+            var arrow = isUp
+                ? '<svg viewBox="0 0 12 12" fill="none"><path d="M6 2.5v7M6 2.5L3 5.5M6 2.5l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+                : '<svg viewBox="0 0 12 12" fill="none" style="transform:rotate(180deg)"><path d="M6 2.5v7M6 2.5L3 5.5M6 2.5l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            return '<div class="trend-badge ' + cls + '">' + arrow + Math.abs(pct).toFixed(1) + '%</div>';
+        }
+
+        function scriptTrendHTML(daily) {
+            if (!daily || daily.length < 14) return '';
+            var thisWeek = sumSlice(daily, -7);
+            var lastWeek = sumSlice(daily, -14, -7);
+            if (lastWeek === 0) return '';
+            var pct = ((thisWeek - lastWeek) / lastWeek) * 100;
+            var isUp = pct >= 0;
+            var cls = isUp ? 'up' : 'down';
+            var arrow = isUp
+                ? '<svg viewBox="0 0 12 12" fill="none"><path d="M6 2.5v7M6 2.5L3 5.5M6 2.5l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+                : '<svg viewBox="0 0 12 12" fill="none" style="transform:rotate(180deg)"><path d="M6 2.5v7M6 2.5L3 5.5M6 2.5l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            return '<div class="script-trend ' + cls + '">' + arrow + Math.abs(pct).toFixed(1) + '%</div>';
+        }
+
+        function genScriptDaily(breakdown, daily) {
+            var out = {};
+            var total = 0;
+            for (var k in breakdown) total += breakdown[k];
+            if (total === 0) return out;
+            for (var s in breakdown) {
+                var r = breakdown[s] / total;
+                out[s] = daily.map(function(d) { return Math.round(d * r); });
+            }
+            return out;
+        }
+
+        function formatDate(str) {
+            var d = new Date(str);
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function makeChart(canvas, labels, vals, height, showTooltip) {
+            var ctx = canvas.getContext('2d');
+            var g = ctx.createLinearGradient(0, 0, 0, height);
+            g.addColorStop(0, 'rgba(88, 101, 242, 0.15)');
+            g.addColorStop(1, 'rgba(88, 101, 242, 0)');
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.map(formatDate),
+                    datasets: [{ data: vals, borderColor: '#5865F2', backgroundColor: g, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: showTooltip ? 5 : 0, pointBackgroundColor: '#5865F2', pointBorderColor: '#111214', pointBorderWidth: 3, borderWidth: 2 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: showTooltip, backgroundColor: '#1e1f22', titleColor: '#949ba4', bodyColor: '#f2f3f5',
+                            borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, padding: 12, cornerRadius: 8, displayColors: false,
+                            titleFont: { size: 11, weight: '500' }, bodyFont: { size: 16, weight: '700' },
+                            callbacks: { label: function(c) { return c.parsed.y.toLocaleString() + ' executions'; } }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false }, ticks: { color: '#6d6f78', font: { size: 11 } }, border: { display: false } },
+                        x: { grid: { display: false }, ticks: { color: '#6d6f78', maxRotation: 0, font: { size: 10 }, maxTicksLimit: 8 }, border: { display: false } }
+                    },
+                    interaction: { intersect: false, mode: 'index' },
+                    hover: { mode: showTooltip ? 'index' : null, intersect: false }
+                }
+            });
+        }
+
+        function makeSparkline(canvasId, vals) {
+            var canvas = document.getElementById(canvasId);
+            if (!canvas) return null;
+
+            if (sparklineCharts[canvasId]) {
+                sparklineCharts[canvasId].destroy();
+                delete sparklineCharts[canvasId];
+            }
+
+            var sliced = vals.slice(-14);
+            var mx = Math.max.apply(null, sliced);
+            if (mx === 0) mx = 1;
+            var normalized = sliced.map(function(v) { return v / mx; });
+
+            var ctx = canvas.getContext('2d');
+            var g = ctx.createLinearGradient(0, 0, 0, 28);
+            g.addColorStop(0, 'rgba(88, 101, 242, 0.4)');
+            g.addColorStop(1, 'rgba(88, 101, 242, 0)');
+
+            var chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: normalized.map(function(_, i) { return i; }),
+                    datasets: [{
+                        data: normalized,
+                        borderColor: '#5865F2',
+                        backgroundColor: g,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        borderWidth: 1.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    scales: {
+                        y: { display: false, min: 0, max: 1.2 },
+                        x: { display: false }
+                    },
+                    events: [],
+                    animation: false
+                }
+            });
+
+            sparklineCharts[canvasId] = chart;
+            return chart;
+        }
+
+        function toggleScript(name) {
+            var wasOpen = expanded === name;
+            if (expanded) {
+                var oldW = document.querySelector('.script-wrapper.active');
+                if (oldW) { oldW.classList.remove('active'); oldW.querySelector('.script-expand').classList.remove('open'); }
+                var oldK = expanded.replace(/[^a-zA-Z0-9]/g, '_');
+                if (scriptCharts[oldK]) { scriptCharts[oldK].destroy(); delete scriptCharts[oldK]; }
+            }
+            expanded = wasOpen ? null : name;
+            if (!wasOpen) {
+                var w = document.querySelector('[data-script="' + name + '"]');
+                if (w) { w.classList.add('active'); w.querySelector('.script-expand').classList.add('open'); setTimeout(function() { initExpandChart(name); }, 100); }
+            }
+        }
+
+        function initExpandChart(name) {
+            if (!data || !data.script_daily_data || !data.script_daily_data[name]) return;
+            var key = name.replace(/[^a-zA-Z0-9]/g, '_');
+            var canvas = document.getElementById('expand-chart-' + key);
+            if (!canvas) return;
+            if (scriptCharts[key]) scriptCharts[key].destroy();
+            scriptCharts[key] = makeChart(canvas, data.chart_labels, data.script_daily_data[name], 140, true);
+        }
+
+        function render() {
+            if (!data) return;
+            var cd = data.chart_data || [];
+
+            var weekExec = data.week_executions;
+            var prevWeekExec = data.prev_week_executions;
+            var monthExec = data.month_executions;
+            var prevMonthExec = data.prev_month_executions;
+
+            if (typeof weekExec === 'undefined' || weekExec === null) {
+                weekExec = cd.length >= 7 ? sumSlice(cd, -7) : sumSlice(cd, 0);
+            }
+
+            if (typeof prevWeekExec === 'undefined' || prevWeekExec === null) {
+                prevWeekExec = cd.length >= 14 ? sumSlice(cd, -14, -7) : 0;
+            }
+
+            if (typeof monthExec === 'undefined' || monthExec === null) {
+                monthExec = sumSlice(cd, 0);
+            }
+
+            if (typeof prevMonthExec === 'undefined' || prevMonthExec === null) {
+                prevMonthExec = 0;
+            }
+
+            var halfLen = Math.floor(cd.length / 2);
+            var dailyAvg, prevDailyAvg;
+            if (halfLen > 0) {
+                var firstHalf = sumSlice(cd, 0, halfLen);
+                var secondHalf = sumSlice(cd, halfLen);
+                prevDailyAvg = Math.round(firstHalf / halfLen);
+                dailyAvg = Math.round(secondHalf / (cd.length - halfLen));
+            } else {
+                dailyAvg = cd.length > 0 ? Math.round(sumSlice(cd, 0) / cd.length) : 0;
+                prevDailyAvg = 0;
+            }
+
+            var h = '';
+
+            h += '<div class="metrics">';
+            h += '<div class="card metric-card anim anim-d1"><div class="metric-top"><span class="metric-label">Total Executions</span></div><div class="metric-value">' + data.total_executions.toLocaleString() + '</div><div class="metric-sub">All time</div></div>';
+            h += '<div class="card metric-card anim anim-d2"><div class="metric-top"><span class="metric-label">This Week</span>' + trendHTML(weekExec, prevWeekExec) + '</div><div class="metric-value">' + weekExec.toLocaleString() + '</div><div class="metric-sub">' + (data.unique_users_week || 0).toLocaleString() + ' users</div></div>';
+            h += '<div class="card metric-card anim anim-d3"><div class="metric-top"><span class="metric-label">This Month</span>' + trendHTML(monthExec, prevMonthExec) + '</div><div class="metric-value">' + monthExec.toLocaleString() + '</div><div class="metric-sub">' + (data.unique_users_month || 0).toLocaleString() + ' users</div></div>';
+            h += '<div class="card metric-card anim anim-d4"><div class="metric-top"><span class="metric-label">Daily Average</span>' + trendHTML(dailyAvg, prevDailyAvg) + '</div><div class="metric-value">' + dailyAvg.toLocaleString() + '</div><div class="metric-sub">Last ' + cd.length + ' days</div></div>';
+            h += '</div>';
+
+            h += '<div class="card section-card anim anim-d5"><div class="section-header" style="display:flex;align-items:center;justify-content:space-between"><div><div class="section-title">Execution History</div><div class="section-sub">Last ' + cd.length + ' days</div></div><div class="section-legend"><span class="dot"></span>Executions</div></div><div class="chart-wrap"><canvas id="mainChart"></canvas></div></div>';
+
+            var scripts = Object.entries(data.script_breakdown).sort(function(a, b) { return b[1] - a[1]; });
+            var totalAll = scripts.reduce(function(a, b) { return a + b[1]; }, 0);
+
+            h += '<div class="card scripts-card anim anim-d6"><div class="section-header"><div class="section-title">Scripts</div><div class="section-sub">' + scripts.length + ' tracked &middot; ' + totalAll.toLocaleString() + ' total executions</div></div>';
+            h += '<div class="table-header"><span class="col-rank">#</span><span class="col-name">Script Name</span><span class="col-spark">Activity</span><span class="col-trend">Trend</span><span class="col-count">Executions</span><span class="col-arrow"></span></div>';
+            h += '<div class="script-list">';
+
+            scripts.forEach(function(entry, i) {
+                var name = entry[0], count = entry[1];
+                var daily = (data.script_daily_data && data.script_daily_data[name]) || [];
+                var key = name.replace(/[^a-zA-Z0-9]/g, '_');
+                var share = totalAll ? ((count / totalAll) * 100).toFixed(1) : '0';
+                var total = daily.reduce(function(a, b) { return a + b; }, 0);
+                var avg = daily.length ? Math.round(total / daily.length) : 0;
+                var peak = daily.length ? Math.max.apply(null, daily) : 0;
+                var low = daily.length ? Math.min.apply(null, daily) : 0;
+
+                h += '<div class="script-wrapper" data-script="' + name + '">';
+                h += '<button class="script-row" onclick="toggleScript(\'' + name.replace(/'/g, "\\'") + '\')">';
+                h += '<span class="col-rank script-rank">' + (i + 1) + '</span>';
+                h += '<span class="col-name script-name">' + name + '</span>';
+                h += '<span class="col-spark"><div class="spark-container"><canvas id="spark-' + key + '" width="80" height="28"></canvas></div></span>';
+                h += '<span class="col-trend">' + scriptTrendHTML(daily) + '</span>';
+                h += '<span class="col-count script-count">' + count.toLocaleString() + '</span>';
+                h += '<span class="col-arrow script-arrow"><svg viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+                h += '</button>';
+                h += '<div class="script-expand"><div class="script-expand-overflow"><div class="expand-content">';
+                h += '<div class="expand-label"><span>Breakdown</span><span>&bull;</span><span>' + share + '% of total</span></div>';
+                h += '<div class="expand-chart"><canvas id="expand-chart-' + key + '"></canvas></div>';
+                h += '<div class="stat-grid">';
+                h += '<div class="stat-box"><div class="stat-val">' + total.toLocaleString() + '</div><div class="stat-lbl">Total</div></div>';
+                h += '<div class="stat-box"><div class="stat-val">' + avg.toLocaleString() + '</div><div class="stat-lbl">Daily Avg</div></div>';
+                h += '<div class="stat-box"><div class="stat-val">' + peak.toLocaleString() + '</div><div class="stat-lbl">Peak</div></div>';
+                h += '<div class="stat-box"><div class="stat-val">' + low.toLocaleString() + '</div><div class="stat-lbl">Lowest</div></div>';
+                h += '</div></div></div></div></div>';
+            });
+
+            h += '</div></div>';
+            document.getElementById('content').innerHTML = h;
+
+            if (mainChart) mainChart.destroy();
+            var mc = document.getElementById('mainChart');
+            if (mc) mainChart = makeChart(mc, data.chart_labels, data.chart_data, 320, true);
+
+            Object.keys(sparklineCharts).forEach(function(k) {
+                sparklineCharts[k].destroy();
+            });
+            sparklineCharts = {};
+
+            Object.keys(scriptCharts).forEach(function(k) {
+                scriptCharts[k].destroy();
+            });
+            scriptCharts = {};
+
+            setTimeout(function() {
+                scripts.forEach(function(entry) {
+                    var name = entry[0];
+                    var daily = (data.script_daily_data && data.script_daily_data[name]) || [];
+                    if (daily.length > 0) {
+                        var key = name.replace(/[^a-zA-Z0-9]/g, '_');
+                        makeSparkline('spark-' + key, daily);
+                    }
+                });
+            }, 50);
+
+            expanded = null;
+        }
+
+        async function load(refresh) {
+            try {
+                setStatus('connecting', 'Connecting...');
+                var res = await fetch('/analytics-data');
+                data = await res.json();
+                if (!data.script_daily_data && data.script_breakdown && data.chart_data) {
+                    data.script_daily_data = genScriptDaily(data.script_breakdown, data.chart_data);
+                }
+                setStatus('live', 'Live');
+                if (refresh) toast('Data refreshed');
+                render();
+            } catch (e) {
+                console.error(e);
+                setStatus('offline', 'Offline');
+            }
+        }
+
+        load(false);
+        setInterval(function() { load(false); }, 60000);
+    </script>
+</body>
+</html>
