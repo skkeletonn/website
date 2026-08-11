@@ -406,7 +406,7 @@ def script_detail(script_id):
     <meta property="og:title" content="{script['title']} - Vadrifts">
     <meta property="og:description" content="{script['description']}">
     <meta property="og:image" content="{script['thumbnail']}">
-    <meta property="og:url" content="https://valorium.onrender.com/script/{script['id']}">
+    <meta property="og:url" content="https://vadrifts.onrender.com/script/{script['id']}">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Vadrifts">
     <meta name="twitter:card" content="summary_large_image">
@@ -739,7 +739,7 @@ def create_key():
 
     verification_tokens[token]['used'] = True
     slug = key_system.create_slug(client_ip)
-    host = request.headers.get('host', 'valorium.onrender.com')
+    host = request.headers.get('host', 'vadrifts.onrender.com')
     logger.info(f"Created key slug for IP: {client_ip}")
     return f"https://{host}/getkey/{slug}"
 
@@ -928,6 +928,16 @@ def find_channels():
     data = request.get_json()
     usernames = data.get('usernames', [])
     return youtube_finder.find_multiple_channels(usernames)
+
+
+@app.route('/api/showcasers')
+def showcasers():
+    # Static, cacheable, and instant. The homepage uses this instead of the
+    # live YouTube scraper so a throttled/slow YouTube can never hang the site.
+    from showcasers_data import SHOWCASERS
+    resp = jsonify({'channels': SHOWCASERS})
+    resp.headers['Cache-Control'] = 'public, max-age=3600'
+    return resp
 
 
 def _render_result(icon, title, message, page_class="success", page_title="Key System"):
@@ -1242,5 +1252,8 @@ def submit_suggestion_route():
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
+    # threaded=True is critical: the Flask dev server is single-threaded by
+    # default, so one slow request (YouTube scrape, image processing, Discord
+    # API, DB connect) would block every other page load and cause timeouts/503s.
     threading.Thread(target=server_pinger, daemon=True).start()
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
