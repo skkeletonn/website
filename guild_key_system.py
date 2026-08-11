@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 MONGODB_URI = os.environ.get("MONGODB_URI")
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
-SERVER_BASE_URL = os.environ.get("SERVER_BASE_URL", "https://vadrifts.onrender.com")
+SERVER_BASE_URL = os.environ.get("SERVER_BASE_URL", "https://valorium.onrender.com")
 
 MIN_COMPLETION_SECONDS = 25
 
@@ -20,7 +20,12 @@ script_profiles_collection = None
 
 if MONGODB_URI:
     try:
-        _client = MongoClient(MONGODB_URI)
+        _client = MongoClient(
+            MONGODB_URI,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+            socketTimeoutMS=10000,
+        )
         _db = _client["vadrifts"]
         guild_configs_collection = _db["guild_key_configs"]
         guild_sessions_collection = _db["guild_key_sessions"]
