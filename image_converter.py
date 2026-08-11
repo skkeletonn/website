@@ -207,7 +207,14 @@ def convert_image_endpoint(req=None):
             bg.paste(image, mask=image.split()[-1])
             image = bg
         else:
-            image = image.convert('RGB')
+            image.convert('RGB')
+
+    PIXEL_GRID_MAX = 256
+    if width > PIXEL_GRID_MAX or height > PIXEL_GRID_MAX:
+        return jsonify({
+            'error': (f'Pixel grid is limited to {PIXEL_GRID_MAX}x{PIXEL_GRID_MAX}. '
+                      f'Requested {width}x{height}.')
+        }), 413
 
     pixels = []
     px = image.load()
