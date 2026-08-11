@@ -12,7 +12,7 @@ def inject_meta_tags(html_content, meta_tags):
 def server_pinger():
     while True:
         try:
-            requests.get("https://dshgabhjhdiab.onrender.com/health", timeout=10)
+            requests.get("https://valorium.onrender.com/health", timeout=10)
         except Exception as e:
             logger.error(f"Ping failed: {e}")
         time.sleep(300)
