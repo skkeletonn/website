@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projects — Vadrifts</title>
+  <link rel="icon" href="https://i.imgur.com/ePueN25.png" type="image/png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000000;
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .bg-lights {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      overflow: hidden; z-index: 1;
+    }
+    .light {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(200px);
+      opacity: 0.35;
+      animation-duration: 50s;
+      animation-iteration-count: infinite;
+      animation-timing-function: ease-in-out;
+    }
+    .light-1 { width: 500px; height: 500px; background: radial-gradient(circle, #7b2cbf 0%, transparent 70%); top: 2%; left: 2%; animation-name: float1; }
+    .light-2 { width: 300px; height: 300px; background: radial-gradient(circle, #9d4edd 0%, transparent 70%); top: 15%; right: 8%; animation-name: float2; animation-delay: -5s; }
+    .light-3 { width: 450px; height: 450px; background: radial-gradient(circle, #b388ff 0%, transparent 70%); bottom: 20%; left: 10%; animation-name: float3; animation-delay: -10s; }
+    .light-4 { width: 350px; height: 350px; background: radial-gradient(circle, #c77dff 0%, transparent 70%); bottom: 15%; right: 12%; animation-name: float4; animation-delay: -15s; }
+    .light-5 { width: 280px; height: 280px; background: radial-gradient(circle, #a45cff 0%, transparent 70%); top: 45%; left: 45%; animation-name: float5; animation-delay: -20s; }
+    .light-6 { width: 200px; height: 200px; background: radial-gradient(circle, #b15eff 0%, transparent 70%); top: 60%; right: 30%; animation-name: float6; animation-delay: -25s; }
+    .light-7 { width: 380px; height: 380px; background: radial-gradient(circle, #ffb347 0%, transparent 70%); bottom: 8%; right: 5%; animation-name: float7; animation-delay: -30s; }
+
+    @keyframes float1 { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(60px,-40px) scale(1.05);} }
+    @keyframes float2 { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-50px,40px) scale(1.05);} }
+    @keyframes float3 { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(40px,-60px) scale(0.95);} }
+    @keyframes float4 { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-40px,-50px) scale(1.1);} }
+    @keyframes float5 { 0%,100%{transform:translate(0,0) scale(1) rotate(0deg);} 50%{transform:translate(-20px,-30px) scale(1.05) rotate(180deg);} }
+    @keyframes float6 { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(40px,-50px) scale(1.05);} }
+    @keyframes float7 { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-30px,-40px) scale(1.05);} }
+
+    .particles {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 2; pointer-events: none;
+    }
+    .particle {
+      position: absolute;
+      width: 3px; height: 3px;
+      background: #a45cff;
+      border-radius: 50%;
+      opacity: 0.5;
+      box-shadow: 0 0 8px #a45cff;
+      animation: floatUp 240s linear infinite;
+    }
+    @keyframes floatUp {
+      0%   { transform: translateY(100vh) translateX(0);    opacity: 0.5; }
+      50%  { transform: translateY(50vh)  translateX(20px); opacity: 0.4; }
+      100% { transform: translateY(-200px) translateX(40px); opacity: 0.3; }
+    }
+
+    .page-header {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 140px 20px 40px;
+      animation: fadeInUp 1.2s ease-out;
+    }
+    .page-header h1 {
+      font-size: clamp(38px, 6vw, 64px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(
+        90deg,
+        #ffffff 0%,
+        #c478d4 25%,
+        #ff9f43 50%,
+        #c478d4 75%,
+        #ffffff 100%
+      );
+      background-size: 200% auto;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 14px;
+      animation: titleShimmer 8s linear infinite;
+    }
+    @keyframes titleShimmer {
+      from { background-position: 0% center; }
+      to   { background-position: 200% center; }
+    }
+    .page-header p {
+      color: #b8b8b8;
+      font-size: 16px;
+      max-width: 620px;
+      margin: 0 auto;
+      line-height: 1.55;
+    }
+    .page-header p .accent-purple {
+      color: #c478d4;
+      font-weight: 600;
+    }
+    .page-header p .accent-orange {
+      color: #ff9f43;
+      font-weight: 600;
+    }
+    .page-header p .accent-soft {
+      color: #e8e8e8;
+      font-weight: 500;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .spotlight {
+      position: relative;
+      z-index: 10;
+      max-width: 1200px;
+      margin: 20px auto 60px;
+      padding: 0 20px;
+      opacity: 0;
+      animation: fadeInUp 1.2s ease-out 0.3s both;
+    }
+    .spotlight-frame {
+      position: relative;
+      border-radius: 22px;
+      overflow: hidden;
+      aspect-ratio: 16 / 6;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 30px 80px rgba(114, 9, 183, 0.18);
+      background: #0a0a0a;
+    }
+    .spotlight-slide {
+      position: absolute; inset: 0;
+      opacity: 0;
+      transform: scale(1.04);
+      filter: blur(6px);
+      transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 1.4s cubic-bezier(0.22, 1, 0.36, 1),
+                  filter  0.85s cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: none;
+      will-change: opacity, transform, filter;
+      z-index: 0;
+    }
+    .spotlight-slide.is-active {
+      opacity: 1;
+      transform: scale(1);
+      filter: blur(0);
+      pointer-events: auto;
+      z-index: 1;
+    }
+    .spotlight-slide.is-leaving {
+      opacity: 0;
+      transform: scale(0.97);
+      filter: blur(5px);
+      z-index: 0;
+    }
+    .spotlight-image {
+      transition: transform 9s ease-out;
+    }
+    .spotlight-slide.is-active .spotlight-image {
+      transform: scale(1.08);
+    }
+    .spotlight-image {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+    .spotlight-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(
+        90deg,
+        rgba(0,0,0,0.85) 0%,
+        rgba(0,0,0,0.55) 40%,
+        rgba(0,0,0,0.10) 100%
+      );
+    }
+    .spotlight-content {
+      position: relative;
+      z-index: 2;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 40px 48px;
+      max-width: 60%;
+    }
+    .spotlight-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #ffd28a;
+      margin-bottom: 12px;
+    }
+    .spotlight-eyebrow::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #ff9f43;
+      box-shadow: 0 0 12px #ff9f43;
+      animation: pulseDot 1.6s ease-in-out infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.4; transform: scale(0.7); }
+    }
+    .spotlight-title {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      line-height: 1.05;
+      margin-bottom: 14px;
+      color: #ffffff;
+    }
+    .spotlight-blurb {
+      color: #cfcfcf;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 22px;
+      max-width: 540px;
+    }
+    .spotlight-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      align-self: flex-start;
+      padding: 12px 22px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #7209b7, #ff9f43);
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .spotlight-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(255, 159, 67, 0.35);
+    }
+    .spotlight-cta[data-disabled="true"] {
+      background: rgba(255, 255, 255, 0.08);
+      color: #888;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .spotlight-dots {
+      position: absolute;
+      bottom: 18px;
+      right: 22px;
+      z-index: 3;
+      display: flex;
+      gap: 8px;
+    }
+    .spotlight-dot {
+      position: relative;
+      width: 36px; height: 4px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.18);
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      overflow: hidden;
+      transition: background 0.3s ease;
+    }
+    .spotlight-dot::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      width: 0%;
+      background: linear-gradient(90deg, #7209b7, #ff9f43);
+      border-radius: 4px;
+      transition: width 0.2s linear;
+    }
+    .spotlight-dot.is-active::after {
+      width: 100%;
+      transition: width 8s linear;
+    }
+    .spotlight-dot.is-active {
+      background: rgba(255,255,255,0.08);
+    }
+
+    .filter-row {
+      position: relative;
+      z-index: 10;
+      max-width: 1200px;
+      margin: 0 auto 30px;
+      padding: 0 20px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      opacity: 0;
+      animation: fadeInUp 1.2s ease-out 0.6s both;
+    }
+    .filter-chip {
+      position: relative;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #cccccc;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+    }
+    .filter-chip:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .filter-chip.is-active {
+      color: #ffffff;
+      background: rgba(114, 9, 183, 0.18);
+      border-color: rgba(196, 120, 212, 0.4);
+    }
+    .filter-chip.is-active::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 18px;
+      right: 18px;
+      height: 2px;
+      background: linear-gradient(90deg, #7209b7, #ff9f43);
+      box-shadow: 0 0 10px rgba(114, 9, 183, 0.8);
+      border-radius: 2px;
+    }
+    .filter-search {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: border-color 0.25s ease;
+    }
+    .filter-search:focus-within {
+      border-color: rgba(196, 120, 212, 0.5);
+    }
+    .filter-search svg { width: 14px; height: 14px; opacity: 0.55; }
+    .filter-search input {
+      background: transparent;
+      border: 0;
+      outline: 0;
+      color: #ffffff;
+      font: inherit;
+      font-size: 13px;
+      width: 160px;
+    }
+    .filter-search input::placeholder { color: #888; }
+
+    .grid-wrap {
+      position: relative;
+      z-index: 10;
+      max-width: 1200px;
+      margin: 0 auto 100px;
+      padding: 0 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+      perspective: 1200px;
+    }
+    @media (max-width: 980px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
+
+    .project-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      border-radius: 18px;
+      background: linear-gradient(160deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      text-decoration: none;
+      color: inherit;
+      overflow: hidden;
+      opacity: 0;
+      animation: fadeInUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+      animation-delay: calc(0.7s + var(--card-index, 0) * 0.09s);
+      transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 0.35s ease,
+                  border-color 0.3s ease,
+                  box-shadow 0.3s ease,
+                  background 0.3s ease;
+      will-change: transform, opacity;
+    }
+    .project-card.is-hidden { display: none; }
+    .project-card.is-leaving {
+      opacity: 0;
+      transform: translateY(8px) scale(0.94);
+      pointer-events: none;
+    }
+    .project-card.is-entering {
+      opacity: 0;
+      transform: translateY(14px) scale(0.96);
+      animation: none;
+    }
+    .project-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(196, 120, 212, 0.5);
+      background: linear-gradient(160deg, rgba(114, 9, 183, 0.12), rgba(255,255,255,0.02));
+      box-shadow:
+        0 36px 70px rgba(114, 9, 183, 0.42),
+        0 14px 30px rgba(255, 159, 67, 0.16),
+        0 0 0 1px rgba(196, 120, 212, 0.18) inset;
+    }
+    .project-card::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(114, 9, 183, 0.6), rgba(255, 159, 67, 0.6));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+              mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .project-card:hover::before { opacity: 1; }
+
+    .project-banner {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 7;
+      overflow: visible;
+      background:
+        radial-gradient(circle at 30% 40%, rgba(114, 9, 183, 0.35), transparent 60%),
+        radial-gradient(circle at 75% 65%, rgba(255, 159, 67, 0.22), transparent 60%),
+        linear-gradient(160deg, #18091f 0%, #0c0612 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .project-banner::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.5) 100%);
+      pointer-events: none;
+      z-index: 2;
+      transform-origin: center;
+      transition: transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .project-card:hover .project-banner::before {
+      transform: scale(1.1);
+    }
+    .project-banner::after {
+      content: '';
+      position: absolute;
+      inset: -30% -10% -50% -10%;
+      background: radial-gradient(60% 50% at 50% 70%, rgba(196, 120, 212, 0.55), transparent 70%);
+      opacity: 0;
+      transform: scale(0.85);
+      transition: opacity 0.6s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(20px);
+    }
+    .project-card:hover .project-banner::after {
+      opacity: 0.7;
+      transform: scale(1.15);
+    }
+    .project-banner img.banner-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 1.1s cubic-bezier(0.22, 1, 0.36, 1), filter 0.5s ease;
+      transform-origin: center;
+      z-index: 1;
+    }
+    .project-card:hover .project-banner img.banner-img {
+      transform: scale(1.1);
+      filter: brightness(1.08) saturate(1.1);
+    }
+
+    .project-icon {
+      position: absolute;
+      left: 18px;
+      bottom: -38px;
+      width: 84px;
+      height: 84px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 4;
+      pointer-events: none;
+    }
+    .project-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: transparent;
+      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.6))
+              drop-shadow(0 2px 6px rgba(114, 9, 183, 0.35));
+      transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  filter 0.4s ease;
+    }
+
+    .banner-spin-slow .project-icon img {
+      transition: transform 0s linear, filter 0.4s ease;
+    }
+    .project-card:hover .banner-spin-slow .project-icon img {
+      filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.7))
+              drop-shadow(0 0 16px rgba(199, 125, 255, 0.65));
+    }
+    .project-card:hover .banner-pulse .project-icon img {
+      transform: scale(1.14);
+      filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.6))
+              drop-shadow(0 0 18px rgba(255, 159, 67, 0.55));
+    }
+    .project-card:hover .banner-tilt .project-icon img {
+      transform: rotate(8deg) scale(1.06);
+    }
+    .project-card:hover .banner-float .project-icon img {
+      transform: translateY(-8px) scale(1.05) rotate(-3deg);
+      filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.55))
+              drop-shadow(0 0 14px rgba(196, 120, 212, 0.55));
+    }
+    .banner-shine::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%);
+      transform: translateX(-100%);
+      mix-blend-mode: screen;
+      pointer-events: none;
+      z-index: 3;
+      transition: transform 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .project-card:hover .banner-shine::after {
+      transform: translateX(100%);
+    }
+    @keyframes logoSpinSlow { from { --icon-rot: 0deg; } to { --icon-rot: 360deg; } }
+
+    .project-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+      padding: 16px 18px 18px;
+    }
+    .project-body-with-icon {
+      padding-top: 54px;
+    }
+    .project-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .project-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #ffffff;
+    }
+    .project-status {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+    .status-live { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .status-beta { background: rgba(255, 159, 67, 0.15); color: #ffb347; border: 1px solid rgba(255,159,67,0.3); }
+    .status-soon { background: rgba(196, 120, 212, 0.15); color: #c478d4; border: 1px solid rgba(196,120,212,0.3); }
+
+    .project-desc {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #b8b8b8;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: calc(1.5em * 2);
+    }
+
+    .grid-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+      font-size: 14px;
+    }
+    .grid-empty.is-hidden { display: none; }
+
+    @media (max-width: 768px) {
+      .page-header { padding-top: 120px; }
+      .spotlight-frame { aspect-ratio: 4 / 5; }
+      .spotlight-content { max-width: 100%; padding: 28px 22px; }
+      .spotlight-overlay {
+        background: linear-gradient(
+          0deg,
+          rgba(0,0,0,0.92) 0%,
+          rgba(0,0,0,0.55) 50%,
+          rgba(0,0,0,0.20) 100%
+        );
+      }
+      .project-banner { aspect-ratio: 16 / 9; }
+      .project-body { padding: 14px 16px 16px; }
+      .project-icon { width: 70px; height: 70px; bottom: -32px; left: 14px; }
+      .project-body-with-icon { padding-top: 48px; }
+      .filter-search { margin-left: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-lights">
+    <div class="light light-1"></div>
+    <div class="light light-2"></div>
+    <div class="light light-3"></div>
+    <div class="light light-4"></div>
+    <div class="light light-5"></div>
+    <div class="light light-6"></div>
+    <div class="light light-7"></div>
+  </div>
+  <div class="particles" id="particles"></div>
+
+  {% include '_navbar.html' %}
+
+  <header class="page-header">
+    <h1>Projects</h1>
+    <p>
+      Everything <span class="accent-purple">Vadrifts</span> has built —
+      <span class="accent-soft">Roblox libraries</span>,
+      <span class="accent-soft">web apps</span>,
+      <span class="accent-soft">userscripts</span>,
+      <span class="accent-soft">extensions</span>.
+      One hub, <span class="accent-orange">real things</span>, all still being
+      maintained.
+    </p>
+  </header>
+
+  {% set spotlights = projects | selectattr('spotlight') | list %}
+  {% if spotlights %}
+  <section class="spotlight" aria-label="Featured projects">
+    <div class="spotlight-frame" id="spotlightFrame">
+      {% for p in spotlights %}
+      <div class="spotlight-slide{% if loop.first %} is-active{% endif %}"
+           data-index="{{ loop.index0 }}">
+        <img class="spotlight-image"
+             src="{{ p.spotlight_image or p.logo }}"
+             alt="{{ p.title }} banner"
+             loading="lazy">
+        <div class="spotlight-overlay"></div>
+        <div class="spotlight-content">
+          {% if p.spotlight_eyebrow %}
+          <span class="spotlight-eyebrow">{{ p.spotlight_eyebrow }}</span>
+          {% endif %}
+          <h2 class="spotlight-title">{{ p.title }}</h2>
+          <p class="spotlight-blurb">{{ p.spotlight_blurb or p.description }}</p>
+          {% if p.status == 'coming-soon' %}
+            <span class="spotlight-cta" data-disabled="true">Coming soon</span>
+          {% else %}
+            <a class="spotlight-cta"
+               href="{{ p.link }}"
+               {% if p.is_external %}target="_blank" rel="noopener noreferrer"{% endif %}>
+              Open {{ p.title }} →
+            </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      <div class="spotlight-dots" id="spotlightDots">
+        {% for p in spotlights %}
+        <button class="spotlight-dot{% if loop.first %} is-active{% endif %}"
+                data-index="{{ loop.index0 }}"
+                aria-label="Show {{ p.title }}"></button>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <nav class="filter-row" id="filterRow" aria-label="Project filters">
+    {% for c in categories %}
+    <button class="filter-chip{% if loop.first %} is-active{% endif %}"
+            data-category="{{ c.id }}">{{ c.label }}</button>
+    {% endfor %}
+    <label class="filter-search" aria-label="Search projects">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="m21 21-4.3-4.3"></path>
+      </svg>
+      <input type="search" id="projectSearch" placeholder="Search projects">
+    </label>
+  </nav>
+
+  <section class="grid-wrap">
+    <div class="grid" id="projectGrid">
+      {% for p in projects %}
+      <a class="project-card"
+         href="{{ p.link }}"
+         style="--card-index: {{ loop.index0 }}"
+         data-category="{{ p.category }}"
+         data-title="{{ p.title | lower }}"
+         data-desc="{{ p.description | lower }}"
+         {% if p.is_external %}target="_blank" rel="noopener noreferrer"{% endif %}
+         {% if p.status == 'coming-soon' %}aria-disabled="true" onclick="return false;"{% endif %}>
+        <div class="project-banner banner-{{ p.logo_animation or 'none' }}">
+          <img class="banner-img" src="{{ p.logo }}" alt="{{ p.title }} banner" loading="lazy">
+          <div class="project-icon">
+            <img src="{{ p.icon or p.logo }}" alt="{{ p.title }} icon" loading="lazy">
+          </div>
+        </div>
+        <div class="project-body project-body-with-icon">
+          <div class="project-title-row">
+            <span class="project-title">{{ p.title }}</span>
+            <span class="project-status {{ p.status_class }}">{{ p.status_badge }}</span>
+          </div>
+          <p class="project-desc">{{ p.description }}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    <p class="grid-empty is-hidden" id="gridEmpty">
+      Nothing matches that filter yet. Try another category.
+    </p>
+  </section>
+
+  <script>
+    
+    (function spawnParticles() {
+      var host = document.getElementById('particles');
+      if (!host) return;
+      var COUNT = 60;
+      for (var i = 0; i < COUNT; i++) {
+        var p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = (Math.random() * 100) + '%';
+        p.style.animationDelay = (Math.random() * -240) + 's';
+        p.style.animationDuration = (180 + Math.random() * 120) + 's';
+        host.appendChild(p);
+      }
+    })();
+
+    (function spotlight() {
+      var frame = document.getElementById('spotlightFrame');
+      if (!frame) return;
+      var slides = frame.querySelectorAll('.spotlight-slide');
+      var dots   = frame.querySelectorAll('.spotlight-dot');
+      if (slides.length <= 1) return;
+
+      var idx = 0;
+      var timer = null;
+      var INTERVAL = 8000;
+      var TRANSITION = 900;
+      var animating = false;
+      var leavingTimer = null;
+
+      function show(next) {
+        var target = (next + slides.length) % slides.length;
+        if (target === idx || animating) return;
+        animating = true;
+
+        var prev = idx;
+        idx = target;
+
+        clearTimeout(leavingTimer);
+        slides.forEach(function (s) { s.classList.remove('is-leaving'); });
+
+        slides[prev].classList.add('is-leaving');
+        slides[prev].classList.remove('is-active');
+        dots[prev].classList.remove('is-active');
+
+        slides[idx].classList.add('is-active');
+        void dots[idx].offsetWidth;
+        dots[idx].classList.add('is-active');
+
+        leavingTimer = setTimeout(function () {
+          slides[prev].classList.remove('is-leaving');
+          animating = false;
+        }, TRANSITION);
+      }
+      function start() {
+        stop();
+        timer = setInterval(function () { show(idx + 1); }, INTERVAL);
+      }
+      function stop() {
+        if (timer) { clearInterval(timer); timer = null; }
+      }
+      dots.forEach(function (d) {
+        d.addEventListener('click', function () {
+          show(parseInt(d.dataset.index, 10));
+          start();
+        });
+      });
+      frame.addEventListener('mouseenter', stop);
+      frame.addEventListener('mouseleave', start);
+      start();
+    })();
+
+    (function filters() {
+      var grid    = document.getElementById('projectGrid');
+      var chips   = document.querySelectorAll('.filter-chip');
+      var search  = document.getElementById('projectSearch');
+      var empty   = document.getElementById('gridEmpty');
+      if (!grid) return;
+
+      var state = { category: 'all', query: '' };
+      var EXIT_DURATION  = 280;
+      var ENTER_DURATION = 380;
+
+      function matches(card) {
+        if (state.category !== 'all' && card.dataset.category !== state.category) return false;
+        if (state.query) {
+          var q = state.query;
+          if (card.dataset.title.indexOf(q) === -1 &&
+              card.dataset.desc.indexOf(q) === -1) return false;
+        }
+        return true;
+      }
+
+      function applyFilter() {
+        var cards = Array.prototype.slice.call(grid.children);
+
+        var firsts = new Map();
+        cards.forEach(function (c) {
+          if (!c.classList.contains('is-hidden')) {
+            firsts.set(c, c.getBoundingClientRect());
+          }
+        });
+
+        var toExit  = [];
+        var toEnter = [];
+        var anyVisible = false;
+
+        cards.forEach(function (c) {
+          var shouldShow = matches(c);
+          var isShown = !c.classList.contains('is-hidden');
+          if (shouldShow) anyVisible = true;
+          if (shouldShow && !isShown)  toEnter.push(c);
+          else if (!shouldShow && isShown) toExit.push(c);
+        });
+        empty.classList.toggle('is-hidden', anyVisible);
+
+        toExit.forEach(function (c) { c.classList.add('is-leaving'); });
+
+        setTimeout(function () {
+          toExit.forEach(function (c) {
+            c.classList.add('is-hidden');
+            c.classList.remove('is-leaving');
+          });
+
+          toEnter.forEach(function (c, i) {
+            c.classList.remove('is-hidden');
+            c.classList.add('is-entering');
+            c.style.transitionDelay = (i * 40) + 'ms';
+          });
+
+          var visibleCards = cards.filter(function (c) { return !c.classList.contains('is-hidden'); });
+          visibleCards.forEach(function (c) {
+            var first = firsts.get(c);
+            if (!first) return;
+            var last = c.getBoundingClientRect();
+            var dx = first.left - last.left;
+            var dy = first.top  - last.top;
+            if (dx === 0 && dy === 0) return;
+            c.style.transition = 'none';
+            c.style.transform  = 'translate(' + dx + 'px,' + dy + 'px)';
+            requestAnimationFrame(function () {
+              c.style.transition = '';
+              c.style.transform  = '';
+            });
+          });
+
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              toEnter.forEach(function (c) { c.classList.remove('is-entering'); });
+            });
+          });
+
+          setTimeout(function () {
+            toEnter.forEach(function (c) { c.style.transitionDelay = ''; });
+          }, ENTER_DURATION + toEnter.length * 40 + 60);
+        }, toExit.length ? EXIT_DURATION : 0);
+      }
+
+      chips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          if (chip.classList.contains('is-active')) return;
+          chips.forEach(function (c) { c.classList.remove('is-active'); });
+          chip.classList.add('is-active');
+          state.category = chip.dataset.category;
+          applyFilter();
+        });
+      });
+
+      if (search) {
+        var t = null;
+        search.addEventListener('input', function () {
+          clearTimeout(t);
+          t = setTimeout(function () {
+            state.query = search.value.trim().toLowerCase();
+            applyFilter();
+          }, 120);
+        });
+      }
+    })();
+
+    (function cardTilt() {
+      var cards = document.querySelectorAll('.project-card');
+      var canTilt = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      if (!canTilt) return;
+      cards.forEach(function (card) {
+        var raf = null;
+        card.addEventListener('mousemove', function (e) {
+          var r = card.getBoundingClientRect();
+          var x = (e.clientX - r.left) / r.width  - 0.5;
+          var y = (e.clientY - r.top)  / r.height - 0.5;
+          if (raf) cancelAnimationFrame(raf);
+          raf = requestAnimationFrame(function () {
+            card.style.transform = 'translateY(-4px) rotateX(' + (-y * 4) + 'deg) rotateY(' + (x * 5) + 'deg)';
+          });
+        });
+        card.addEventListener('mouseleave', function () {
+          if (raf) cancelAnimationFrame(raf);
+          card.style.transform = '';
+        });
+      });
+    })();
+    (function iconSpin() {
+      var SPEED = 50;
+      var WIND_BACK = 650;
+      document.querySelectorAll('.banner-spin-slow').forEach(function (banner) {
+        var img = banner.querySelector('.project-icon img');
+        if (!img) return;
+        var card = banner.closest('.project-card');
+        if (!card) return;
+
+        var rot = 0;
+        var rafSpin = null;
+        var rafBack = null;
+        var lastTime = 0;
+        var spinning = false;
+
+        function tick(now) {
+          if (!spinning) return;
+          if (!lastTime) lastTime = now;
+          var dt = now - lastTime;
+          lastTime = now;
+          rot += SPEED * dt / 1000;
+          img.style.transform = 'rotate(' + rot + 'deg)';
+          rafSpin = requestAnimationFrame(tick);
+        }
+
+        function start() {
+          if (rafBack) { cancelAnimationFrame(rafBack); rafBack = null; }
+          if (spinning) return;
+          spinning = true;
+          lastTime = 0;
+          rafSpin = requestAnimationFrame(tick);
+        }
+
+        function stop() {
+          spinning = false;
+          if (rafSpin) { cancelAnimationFrame(rafSpin); rafSpin = null; }
+          var startRot = rot;
+          var startTime = performance.now();
+          function step(now) {
+            var t = Math.min(1, (now - startTime) / WIND_BACK);
+            var eased = 1 - Math.pow(1 - t, 3);
+            rot = startRot * (1 - eased);
+            img.style.transform = 'rotate(' + rot + 'deg)';
+            if (t < 1) {
+              rafBack = requestAnimationFrame(step);
+            } else {
+              rot = 0;
+              img.style.transform = '';
+              rafBack = null;
+            }
+          }
+          rafBack = requestAnimationFrame(step);
+        }
+
+        card.addEventListener('mouseenter', start);
+        card.addEventListener('mouseleave', stop);
+      });
+    })();
+  </script>
+
+</body>
+</html>
