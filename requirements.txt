@@ -1,0 +1,7 @@
+Flask
+Pillow
+requests
+discord.py
+pymongo
+redis
+psycopg2-binary
