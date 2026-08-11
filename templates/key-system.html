@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Get Key - Vadrifts</title>
+<link rel="icon" href="https://i.imgur.com/ePueN25.png" type="image/png">
+<script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --gradient-primary: linear-gradient(90deg, #ffffff 0%, #7209b7 100%);
+  --gradient-button: linear-gradient(135deg, #7209b7 0%, #9c88ff 100%);
+  --accent-color: #7209b7;
+  --accent-color-rgba: rgba(114, 9, 183, 0.9);
+  --box-shadow-primary: 0 10px 25px rgba(114, 9, 183, 0.35);
+  --box-shadow-primary-hover: 0 15px 40px rgba(114, 9, 183, 0.55);
+  --accent-glow: rgba(114, 9, 183, 0.5);
+  --particle-color: #a45cff;
+}
+
+body {
+  background: #000000;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+.bg-lights {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.main-light {
+  position: absolute;
+  width: 1400px;
+  height: 1400px;
+  border-radius: 50%;
+  filter: blur(160px);
+  opacity: 0;
+  background: radial-gradient(circle, #6a00ff 0%, #3d008a 25%, transparent 65%);
+  animation: slowPulse 18s ease-in-out infinite;
+  transition: opacity 1.2s ease;
+}
+
+#mainLight1 {
+  top: -200px;
+  left: -200px;
+  animation-delay: 0s;
+}
+
+#mainLight2 {
+  bottom: -300px;
+  right: -300px;
+  width: 1600px;
+  height: 1600px;
+  animation-delay: -9s;
+}
+
+#accentLight {
+  position: absolute;
+  width: 800px;
+  height: 800px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0;
+  background: radial-gradient(circle, #7209b7 0%, transparent 60%);
+  animation: slowPulse 22s ease-in-out infinite;
+  animation-delay: -5s;
+  transition: opacity 1.2s ease;
+}
+
+@keyframes slowPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.15); }
+}
+
+.particles {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.5s ease;
+}
+
+.particles.visible {
+  opacity: 1;
+}
+
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: var(--particle-color);
+  border-radius: 50%;
+  opacity: 0.7;
+  box-shadow: 0 0 12px var(--particle-color), 0 0 6px var(--particle-color);
+  animation: floatParticle 25s linear infinite;
+}
+
+@keyframes floatParticle {
+  0% {
+    transform: translateY(100vh) translateX(0) scale(0);
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.7;
+    transform: translateY(95vh) translateX(10px) scale(1);
+  }
+  95% {
+    opacity: 0.5;
+    transform: translateY(5vh) translateX(60px) scale(0.8);
+  }
+  100% {
+    transform: translateY(-5vh) translateX(80px) scale(0);
+    opacity: 0;
+  }
+}
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 120px 20px 40px;
+  position: relative;
+  z-index: 10;
+}
+
+.back-to-script {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #999;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  margin-bottom: 30px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: all 0.3s ease;
+}
+
+.back-to-script:hover {
+  color: #ffffff;
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+  transform: translateX(-5px);
+}
+
+.back-to-script i {
+  width: 16px;
+  height: 16px;
+}
+
+.key-system-layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 40px;
+  align-items: start;
+  animation: fadeInUp 1.2s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(50px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.script-preview {
+  position: sticky;
+  top: 120px;
+}
+
+.script-image-container {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.5), 0 0 80px var(--accent-glow);
+  transition: box-shadow 0.8s ease;
+}
+
+.script-image {
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.script-info-card {
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.script-game-tag {
+  font-size: 12px;
+  color: var(--accent-color);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  text-shadow: 0 0 20px var(--accent-glow);
+}
+
+.script-name {
+  font-size: 26px;
+  font-weight: 800;
+  background: var(--gradient-primary);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+.script-desc {
+  font-size: 14px;
+  color: #999;
+  line-height: 1.6;
+}
+
+.key-content {
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.key-header {
+  margin-bottom: 30px;
+}
+
+.key-title {
+  font-size: 36px;
+  font-weight: 800;
+  background: var(--gradient-primary);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 10px;
+  letter-spacing: -1px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.key-title-icon {
+  width: 36px;
+  height: 36px;
+  color: var(--accent-color);
+  filter: drop-shadow(0 0 10px var(--accent-glow));
+}
+
+.key-subtitle {
+  color: #888;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.vpn-warning {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(251, 191, 36, 0.06) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 16px;
+  padding: 18px 24px;
+  margin-bottom: 25px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.1); }
+  50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.2); }
+}
+
+.vpn-warning-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.vpn-warning-content {
+  flex: 1;
+}
+
+.vpn-warning-title {
+  color: #fbbf24;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.vpn-warning-text {
+  color: #d4a574;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.vpn-warning-text strong {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.instruction-box {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.03) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 30px;
+}
+
+.instruction-title {
+  color: #10b981;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.instruction-title i {
+  width: 18px;
+  height: 18px;
+}
+
+.instruction-steps {
+  color: #bbb;
+  font-size: 14px;
+  line-height: 1.9;
+  list-style: none;
+  counter-reset: step-counter;
+}
+
+.instruction-steps li {
+  counter-increment: step-counter;
+  position: relative;
+  padding-left: 38px;
+  margin-bottom: 10px;
+}
+
+.instruction-steps li:last-child {
+  margin-bottom: 0;
+}
+
+.instruction-steps li::before {
+  content: counter(step-counter);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 24px;
+  height: 24px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.key-options {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 25px;
+}
+
+.provider-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  margin-right: 3px;
+}
+
+.key-provider-btn {
+  width: 100%;
+  padding: 18px 24px;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 20px;
+  gap: 12px;
+  color: white;
+}
+
+.key-provider-btn .provider-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.key-provider-btn i {
+  width: 20px;
+  height: 20px;
+}
+
+.key-provider-btn.workink {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.35);
+}
+
+.key-provider-btn.workink:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(37, 99, 235, 0.5);
+}
+
+.key-provider-btn.lootlabs {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  box-shadow: 0 10px 30px rgba(124, 58, 237, 0.35);
+}
+
+.key-provider-btn.linkvertise {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  box-shadow: 0 10px 30px rgba(5, 150, 105, 0.35);
+}
+
+.key-provider-btn.linkvertise:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(5, 150, 105, 0.5);
+}
+
+.key-provider-btn.lootlabs:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(124, 58, 237, 0.5);
+}
+
+.key-provider-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transition: left 0.5s ease;
+}
+
+.key-provider-btn:hover::before {
+  left: 100%;
+}
+
+.key-provider-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.provider-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.provider-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.provider-tag {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.status-msg {
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  display: none;
+  animation: slideIn 0.3s ease;
+}
+
+.status-msg.show {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-msg.loading {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.status-msg.error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.status-msg.success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  border-top: 2px solid currentColor;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.info-badges {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.info-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #888;
+  font-weight: 500;
+}
+
+.info-badge i {
+  width: 16px;
+  height: 16px;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #888;
+}
+
+.loading-state .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border-width: 4px;
+  margin-bottom: 20px;
+}
+
+.error-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #888;
+}
+
+.error-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  opacity: 0.5;
+  color: #ff6b6b;
+}
+
+.back-btn {
+  background: rgba(114,9,183,0.2);
+  color: #9c88ff;
+  border: 1px solid rgba(114,9,183,0.3);
+  padding: 10px 20px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: inline-block;
+  font-family: 'Inter', sans-serif;
+}
+
+.back-btn:hover {
+  background: rgba(114,9,183,0.3);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 900px) {
+  .key-system-layout {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .script-preview {
+    position: static;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 100px 15px 30px;
+  }
+
+  .key-content {
+    padding: 30px 20px;
+  }
+
+  .key-title {
+    font-size: 28px;
+  }
+
+  .script-name {
+    font-size: 22px;
+  }
+
+  .info-badges {
+    flex-direction: column;
+  }
+
+  .vpn-warning {
+    padding: 16px 18px;
+  }
+
+  .vpn-warning-icon {
+    font-size: 20px;
+  }
+}</style>
+</head>
+
+<body>
+<div class="bg-lights">
+  <div id="mainLight1" class="main-light"></div>
+  <div id="mainLight2" class="main-light"></div>
+  <div id="accentLight"></div>
+</div>
+
+<div class="particles" id="particles"></div>
+
+{% include '_navbar.html' %}
+
+<div class="container">
+  <div id="loadingState" class="loading-state">
+    <div class="loading-spinner"></div>
+    <p>Loading script details...</p>
+  </div>
+
+  <div id="errorState" class="error-state" style="display: none;">
+    <i data-lucide="triangle-alert" class="error-icon"></i>
+    <h3>Script not found</h3>
+    <p>The script you're looking for doesn't exist or has been removed.</p>
+    <br>
+    <a href="/scripts" class="back-btn">← Back to Scripts</a>
+  </div>
+
+  <div id="mainContent" style="display: none;">
+    <a href="#" class="back-to-script" id="backBtn">
+      <i data-lucide="arrow-left"></i> Back to Script
+    </a>
+
+    <div class="key-system-layout">
+      <div class="script-preview">
+        <div class="script-image-container">
+          <img id="scriptImage" class="script-image" src="" alt="Script Thumbnail">
+        </div>
+        <div class="script-info-card">
+          <div class="script-game-tag" id="scriptGame"></div>
+          <div class="script-name" id="scriptTitle"></div>
+          <div class="script-desc" id="scriptDesc"></div>
+        </div>
+      </div>
+
+      <div class="key-content">
+        <div class="key-header">
+          <h1 class="key-title">
+            <i data-lucide="key" class="key-title-icon"></i>
+            Get Your Access Key
+          </h1>
+          <p class="key-subtitle">Complete a quick verification to unlock this script. Choose your preferred method below.</p>
+        </div>
+
+        <div class="vpn-warning">
+          <div class="vpn-warning-icon">⚠️</div>
+          <div class="vpn-warning-content">
+            <div class="vpn-warning-title">Important: VPN/Proxy Notice</div>
+            <div class="vpn-warning-text">
+              Please <strong>disable any VPN or proxy</strong> before continuing and <strong>keep it off</strong> during the entire verification process. Switching IPs mid-way will cause your key to fail.
+            </div>
+          </div>
+        </div>
+
+        <div class="instruction-box">
+          <div class="instruction-title">
+            <i data-lucide="list-ordered"></i>
+            <span>How to get your key:</span>
+          </div>
+          <ol class="instruction-steps">
+            <li>Click a verification button below</li>
+            <li>Complete the quick task (~2 minutes)</li>
+            <li>Complete the captcha verification</li>
+            <li>Copy the generated key and paste it in the script</li>
+          </ol>
+        </div>
+
+        <div class="status-msg" id="statusMsg"></div>
+
+        <div class="key-options" id="keyOptions"></div>
+
+        <div class="info-badges">
+          <div class="info-badge">
+            <i data-lucide="clock"></i>
+            <span>Takes ~2 minutes</span>
+          </div>
+          <div class="info-badge">
+            <i data-lucide="shield-check"></i>
+            <span>Secure verification</span>
+          </div>
+          <div class="info-badge">
+            <i data-lucide="refresh-cw"></i>
+            <span>Key lasts 24-48 hours</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentScript = null;
+var colorsApplied = false;
+
+function initLucideIcons() {
+  if (window.lucide && lucide.createIcons) {
+    lucide.createIcons();
+  } else {
+    setTimeout(initLucideIcons, 50);
+  }
+}
+
+function createParticles() {
+  var particlesContainer = document.getElementById('particles');
+  var particleCount = 25;
+  for (var i = 0; i < particleCount; i++) {
+    var particle = document.createElement('div');
+    particle.className = 'particle';
+    particle.style.left = Math.random() * 100 + '%';
+    particle.style.animationDelay = -Math.random() * 25 + 's';
+    particle.style.animationDuration = (20 + Math.random() * 10) + 's';
+    var size = 2 + Math.random() * 3;
+    particle.style.width = size + 'px';
+    particle.style.height = size + 'px';
+    particlesContainer.appendChild(particle);
+  }
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(function(x) {
+    var hex = x.toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  }).join('');
+}
+
+function hexToRgb(hex) {
+  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
+}
+
+function adjustColor(hex, percent) {
+  var rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  var adjust = function(color) {
+    var adjusted = color + Math.round((255 - color) * (percent / 100));
+    return Math.min(255, Math.max(0, adjusted));
+  };
+  return rgbToHex(adjust(rgb.r), adjust(rgb.g), adjust(rgb.b));
+}
+
+function extractAndApplyColors(imageUrl) {
+  var img = new Image();
+  img.crossOrigin = 'Anonymous';
+  img.src = imageUrl || '';
+  img.onload = function() {
+    var canvas = document.createElement('canvas');
+    var size = 120;
+    canvas.width = size;
+    canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, size, size);
+    var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var pixels = imageData.data;
+    var colorMap = {};
+    var skip = 10;
+    for (var i = 0; i < pixels.length; i += skip * 4) {
+      var r = pixels[i];
+      var g = pixels[i + 1];
+      var b = pixels[i + 2];
+      var brightness = (r * 0.299 + g * 0.587 + b * 0.114);
+      if (brightness < 25 || brightness > 235) continue;
+      var saturation = Math.max(r, g, b) - Math.min(r, g, b);
+      if (saturation < 15) continue;
+      var key = Math.floor(r / 25) * 25 + ',' + Math.floor(g / 25) * 25 + ',' + Math.floor(b / 25) * 25;
+      colorMap[key] = (colorMap[key] || 0) + 1;
+    }
+    var sortedColors = Object.entries(colorMap)
+      .sort(function(a, b) { return b[1] - a[1]; })
+      .slice(0, 3)
+      .map(function(entry) {
+        var parts = entry[0].split(',').map(Number);
+        return rgbToHex(parts[0], parts[1], parts[2]);
+      });
+    if (sortedColors.length >= 2) {
+      applyColorScheme(sortedColors[0], sortedColors[1]);
+    } else if (sortedColors.length === 1) {
+      var color2 = adjustColor(sortedColors[0], 25);
+      applyColorScheme(sortedColors[0], color2);
+    } else {
+      applyColorScheme('#7209b7', '#9c88ff');
+    }
+  };
+  img.onerror = function() {
+    applyColorScheme('#7209b7', '#9c88ff');
+  };
+}
+
+function applyColorScheme(color1, color2) {
+  if (colorsApplied) return;
+  colorsApplied = true;
+
+  var root = document.documentElement;
+  var light1 = document.getElementById('mainLight1');
+  var light2 = document.getElementById('mainLight2');
+  var accentLight = document.getElementById('accentLight');
+  var particles = document.getElementById('particles');
+
+  light1.style.background = 'radial-gradient(circle, ' + color1 + ' 0%, ' + color1 + 'cc 15%, ' + color1 + '88 30%, ' + color1 + '44 50%, transparent 65%)';
+  light2.style.background = 'radial-gradient(circle, ' + color2 + ' 0%, ' + color2 + 'cc 15%, ' + color2 + '88 30%, ' + color2 + '44 50%, transparent 65%)';
+  accentLight.style.background = 'radial-gradient(circle, ' + color1 + '33 0%, ' + color2 + '22 40%, transparent 60%)';
+
+  var gradient = 'linear-gradient(90deg, #ffffff 0%, ' + color1 + ' 50%, ' + color2 + ' 100%)';
+  var gradientButton = 'linear-gradient(135deg, ' + color1 + ' 0%, ' + color2 + ' 100%)';
+  root.style.setProperty('--gradient-primary', gradient);
+  root.style.setProperty('--gradient-button', gradientButton);
+  root.style.setProperty('--accent-color', color1);
+
+  var rgb1 = hexToRgb(color1);
+  if (rgb1) {
+    root.style.setProperty('--accent-color-rgba', 'rgba(' + rgb1.r + ', ' + rgb1.g + ', ' + rgb1.b + ', 0.9)');
+    root.style.setProperty('--box-shadow-primary', '0 10px 25px rgba(' + rgb1.r + ', ' + rgb1.g + ', ' + rgb1.b + ', 0.35)');
+    root.style.setProperty('--box-shadow-primary-hover', '0 15px 40px rgba(' + rgb1.r + ', ' + rgb1.g + ', ' + rgb1.b + ', 0.55)');
+    root.style.setProperty('--accent-glow', 'rgba(' + rgb1.r + ', ' + rgb1.g + ', ' + rgb1.b + ', 0.5)');
+  }
+
+  var particleElements = document.querySelectorAll('.particle');
+  particleElements.forEach(function(particle, index) {
+    var particleColor = index % 2 === 0 ? color1 : color2;
+    particle.style.background = particleColor;
+    particle.style.boxShadow = '0 0 12px ' + particleColor + ', 0 0 6px ' + particleColor;
+  });
+
+  requestAnimationFrame(function() {
+    setTimeout(function() {
+      light1.style.opacity = '0.35';
+      light2.style.opacity = '0.3';
+      accentLight.style.opacity = '0.15';
+      particles.classList.add('visible');
+    }, 50);
+  });
+}
+
+function showDefaultLights() {
+  var light1 = document.getElementById('mainLight1');
+  var light2 = document.getElementById('mainLight2');
+  var accentLight = document.getElementById('accentLight');
+  var particles = document.getElementById('particles');
+  light1.style.opacity = '0.35';
+  light2.style.opacity = '0.3';
+  accentLight.style.opacity = '0.15';
+  particles.classList.add('visible');
+}
+
+function getScriptIdFromURL() {
+  var urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('script');
+}
+
+async function loadScript() {
+  var scriptId = getScriptIdFromURL();
+
+  if (!scriptId) {
+    showError();
+    showDefaultLights();
+    return;
+  }
+
+  try {
+    var response = await fetch('/api/scripts/' + scriptId);
+    if (!response.ok) {
+      throw new Error('Script not found');
+    }
+    currentScript = await response.json();
+    displayScript(currentScript, scriptId);
+  } catch (error) {
+    showError();
+    showDefaultLights();
+  }
+}
+
+function displayScript(script, scriptId) {
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'block';
+
+  document.getElementById('pageTitle').textContent = 'Get Key - ' + script.title + ' - Vadrifts';
+  document.getElementById('scriptImage').src = script.thumbnail || '';
+  document.getElementById('scriptGame').textContent = script.game || '';
+  document.getElementById('scriptTitle').textContent = script.title || '';
+  document.getElementById('scriptDesc').textContent = script.description || '';
+  document.getElementById('backBtn').href = '/script/' + scriptId;
+
+  setupKeyOptions(script);
+  extractAndApplyColors(script.thumbnail);
+  initLucideIcons();
+}
+
+function setupKeyOptions(script) {
+  var container = document.getElementById('keyOptions');
+  container.innerHTML = '';
+  var options = [];
+
+  if (script.has_workink) {
+    options.push({
+      type: 'workink',
+      name: 'Work.ink',
+      tag: 'Recommended',
+      logo: 'https://s3-eu-west-1.amazonaws.com/tpd/logos/60f32c3fa0f0500001ab7c87/0x0.png'
+    });
+  }
+
+  if (script.has_lootlabs) {
+    options.push({
+      type: 'lootlabs',
+      name: 'LootLabs',
+      tag: 'Alternative',
+      logo: 'https://i.imgur.com/DmPISjf.png'
+    });
+  }
+
+  if (script.has_linkvertise) {
+    options.push({
+      type: 'linkvertise',
+      name: 'Linkvertise',
+      tag: 'Alternative',
+      logo: 'https://cdn3.emoji.gg/emojis/20379-linkvertise.png'
+    });
+  }
+
+  if (options.length === 0 && script.has_generic_key) {
+    options.push({
+      type: 'workink',
+      name: 'Get Key',
+      tag: '',
+      logo: 'https://s3-eu-west-1.amazonaws.com/tpd/logos/60f32c3fa0f0500001ab7c87/0x0.png'
+    });
+  }
+
+  if (options.length === 0) {
+    container.innerHTML = '<p style="color:#888;text-align:center;">No verification methods available for this script.</p>';
+    return;
+  }
+
+  options.forEach(function(opt) {
+    var btn = document.createElement('button');
+    btn.className = 'key-provider-btn ' + opt.type;
+    btn.innerHTML =
+      (opt.logo ? '<img src="' + opt.logo + '" class="provider-logo" alt="' + opt.name + ' logo">' : '<i data-lucide="external-link"></i>') +
+      '<div class="provider-info">' +
+        '<span class="provider-name">' + opt.name + '</span>' +
+        (opt.tag ? '<span class="provider-tag">' + opt.tag + '</span>' : '') +
+      '</div>';
+    btn.onclick = function() { startVerification(opt); };
+    container.appendChild(btn);
+  });
+
+  initLucideIcons();
+}
+
+async function startVerification(provider) {
+  var btns = document.querySelectorAll('.key-provider-btn');
+  btns.forEach(function(btn) { btn.disabled = true; });
+  showStatus('Starting verification...', 'loading');
+
+  try {
+    var timerRes = await fetch('/start-verification');
+    if (!timerRes.ok) throw new Error('Failed to start timer');
+
+    var scriptId = getScriptIdFromURL();
+    var providerType = provider.type;
+
+    var cpRes = await fetch('/checkpoint/start?script=' + scriptId + '&provider=' + providerType);
+    var cpData = await cpRes.json();
+
+    if (!cpRes.ok || !cpData.token) throw new Error('Failed to create checkpoint');
+
+    showStatus('Redirecting to verification...', 'loading');
+
+    window.location.href = '/checkpoint/load?t=' + encodeURIComponent(cpData.token);
+
+  } catch (error) {
+    showStatus('Failed to start verification. Please try again.', 'error');
+    btns.forEach(function(btn) { btn.disabled = false; });
+  }
+}
+
+function showStatus(message, type) {
+  var statusEl = document.getElementById('statusMsg');
+  statusEl.className = 'status-msg show ' + type;
+  if (type === 'loading') {
+    statusEl.innerHTML = '<span class="loading-spinner"></span> ' + message;
+  } else {
+    statusEl.textContent = message;
+  }
+}
+
+function showError() {
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('errorState').style.display = 'block';
+  initLucideIcons();
+}
+
+createParticles();
+window.addEventListener('load', function() {
+  loadScript();
+  initLucideIcons();
+});
+</script>
+
+</body>
+</html>
