@@ -1,0 +1,3554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PIXL — Image Converter</title>
+  <meta name="description" content="Resize, crop, and reformat any image. URL or upload. Any size, any format, with a pixel-grid mode for sprites." />
+  <link rel="icon" type="image/png" href="https://i.imgur.com/ucqMt49.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
+  <style>
+:root {
+  --bg: #07090f;
+  --bg-2: #0b1220;
+  --surface: #0f172a;
+  --surface-2: #111c33;
+  --elev: #16213b;
+  --border: #1f2a44;
+  --border-strong: #2a3a5f;
+  --text: #e6edf7;
+  --muted: #8aa0bf;
+  --muted-2: #6b7e9c;
+
+  --blue: #3b82f6;
+  --blue-2: #60a5fa;
+  --blue-3: #93c5fd;
+  --blue-dim: #1d4ed8;
+  --blue-glow: rgba(59, 130, 246, .35);
+
+  --radius: 14px;
+  --radius-lg: 20px;
+  --shadow-1: 0 1px 0 rgba(255,255,255,.04) inset, 0 10px 30px rgba(0,0,0,.45);
+  --shadow-blue: 0 10px 40px -10px rgba(59,130,246,.55);
+
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+
+  --body-grad-top: #07090f;
+  --body-grad-bot: #050810;
+  --body-glow: rgba(59,130,246,.10);
+  --nav-grad-top: rgba(7,9,15,.85);
+  --nav-grad-bot: rgba(7,9,15,.55);
+  --nav-border: rgba(31,42,68,.6);
+  --stage-bg: #0d1424;
+  --stage-shadow: inset 0 1px 0 rgba(96,165,250,.08), inset 0 -40px 80px rgba(0,0,0,.35);
+}
+
+html[data-theme="light"] {
+  --bg: #f5f7fb;
+  --bg-2: #eef2f9;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --elev: #eef2f9;
+  --border: #d8dfe9;
+  --border-strong: #b9c4d4;
+  --text: #0b1220;
+  --muted: #4a5876;
+  --muted-2: #6b7891;
+
+  --blue: #2563eb;
+  --blue-2: #2563eb;
+  --blue-3: #1d4ed8;
+  --blue-dim: #1d4ed8;
+  --blue-glow: rgba(37,99,235,.28);
+
+  --shadow-1: 0 1px 0 rgba(255,255,255,.6) inset, 0 6px 22px rgba(15,23,42,.08);
+  --shadow-blue: 0 10px 30px -12px rgba(37,99,235,.45);
+
+  --body-grad-top: #f5f7fb;
+  --body-grad-bot: #eaeef6;
+  --body-glow: rgba(37,99,235,.08);
+  --nav-grad-top: rgba(255,255,255,.92);
+  --nav-grad-bot: rgba(255,255,255,.7);
+  --nav-border: rgba(216,223,233,.85);
+  --stage-bg: #f3f5fa;
+  --stage-shadow: inset 0 0 0 1px rgba(15,23,42,.04);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+  overflow-x: clip;
+  width: 100%;
+  max-width: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1000px 600px at 50% -200px, var(--body-glow), transparent 70%),
+    linear-gradient(180deg, var(--body-grad-top) 0%, var(--body-grad-bot) 100%);
+  min-height: 100vh;
+  max-width: 100vw;
+  overflow-x: clip;
+}
+
+main { max-width: 100vw; overflow-x: clip; }
+.workspace, .workspace-main, .converter-card, .card, .step-block { min-width: 0; }
+.workspace > * { min-width: 0; }
+.tool-nav { min-width: 0; max-width: 100%; }
+.endpoint-pill { max-width: 100%; word-break: break-all; }
+
+a { color: var(--blue-2); text-decoration: none; }
+a:hover { color: var(--blue-3); }
+
+h1, h2, h3 { letter-spacing: -.02em; margin: 0; }
+
+.hidden { display: none !important; }
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px clamp(20px, 5vw, 64px);
+  backdrop-filter: blur(14px);
+  background: linear-gradient(180deg, var(--nav-grad-top), var(--nav-grad-bot));
+  border-bottom: 1px solid var(--nav-border);
+  transition: background .25s ease, border-color .25s ease;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.theme-toggle {
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  transition: color .2s ease, transform .2s ease, filter .2s ease, text-shadow .2s ease;
+}
+.theme-toggle svg {
+  width: 22px;
+  height: 22px;
+  transition: filter .25s ease, transform .35s ease;
+}
+.theme-toggle:hover {
+  color: #fbbf24;
+  transform: rotate(15deg) scale(1.08);
+}
+.theme-toggle:hover svg {
+  filter: drop-shadow(0 0 6px rgba(251,191,36,.85)) drop-shadow(0 0 14px rgba(251,191,36,.55));
+}
+.theme-toggle:active { transform: scale(.95); }
+.theme-toggle .icon-moon { display: none; }
+.theme-toggle .icon-sun { display: block; }
+html[data-theme="light"] .theme-toggle { color: #475569; }
+html[data-theme="light"] .theme-toggle:hover { color: #6366f1; transform: rotate(-15deg) scale(1.08); }
+html[data-theme="light"] .theme-toggle:hover svg {
+  filter: drop-shadow(0 0 6px rgba(99,102,241,.85)) drop-shadow(0 0 14px rgba(99,102,241,.5));
+}
+html[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+html[data-theme="light"] .theme-toggle .icon-moon { display: block; }
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -.02em;
+}
+.brand-sm { font-size: 17px; }
+
+.brand-icon {
+  width: 28px;
+  height: 28px;
+  fill: var(--blue-2);
+  shape-rendering: crispEdges;
+  filter: drop-shadow(0 0 8px var(--blue-glow));
+  animation: spin 8s linear infinite;
+}
+.brand-sm .brand-icon { width: 22px; height: 22px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin-hover:hover { animation-duration: 1.2s; }
+
+.brand-word { font-family: var(--sans); }
+.brand-dot { color: var(--blue-2); }
+
+.nav-links { display: flex; gap: 28px; }
+.nav-links a {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  transition: color .15s ease;
+}
+.nav-links a:hover { color: var(--text); }
+@media (max-width: 720px) { .nav-links { display: none; } }
+
+.hero {
+  position: relative;
+  padding: clamp(48px, 8vw, 96px) clamp(20px, 5vw, 64px) clamp(36px, 6vw, 64px);
+  overflow: hidden;
+}
+.hero-inner {
+  position: relative;
+  max-width: 680px;
+  margin: 0 auto;
+  text-align: center;
+  z-index: 2;
+}
+.hero-inner::before {
+  content: '';
+  position: absolute;
+  inset: -80px -40px -40px;
+  background:
+    radial-gradient(closest-side at 50% 60%, rgba(59,130,246,.28), transparent 72%),
+    radial-gradient(closest-side at 50% 30%, rgba(96,165,250,.18), transparent 70%);
+  filter: blur(6px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, .6);
+  color: var(--muted);
+  font-size: 13px;
+  font-family: var(--mono);
+  margin-bottom: 22px;
+}
+.badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--blue-2);
+  box-shadow: 0 0 10px var(--blue-2);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+
+.hero h1 {
+  font-size: clamp(32px, 4.6vw, 52px);
+  font-weight: 800;
+  line-height: 1.05;
+  margin-bottom: 18px;
+}
+.grad {
+  background: linear-gradient(120deg, var(--blue-3) 0%, var(--blue-2) 40%, #fff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lede {
+  color: var(--muted);
+  font-size: clamp(15px, 1.3vw, 17px);
+  max-width: 540px;
+  margin: 0 auto 28px;
+}
+
+.hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(96,165,250,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(96,165,250,.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 60% 70% at 50% 45%, #000 25%, transparent 85%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  font-family: var(--sans);
+  transition: transform .15s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease, filter .2s ease;
+  text-decoration: none;
+  color: var(--text);
+}
+.btn-primary {
+  background: linear-gradient(180deg, var(--blue), var(--blue-dim));
+  border-color: rgba(255,255,255,.08);
+  box-shadow: var(--shadow-blue), 0 1px 0 rgba(255,255,255,.18) inset;
+  color: #fff;
+}
+.btn-primary:hover { transform: translateY(-1px); filter: brightness(1.08); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+.btn-ghost {
+  background: rgba(15, 23, 42, .6);
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn-ghost:hover { border-color: var(--border-strong); background: rgba(17, 28, 51, .8); }
+
+.btn-compact { padding: 10px 16px; font-size: 14px; }
+.btn-full { width: 100%; padding: 14px 20px; font-size: 16px; margin-top: 6px; }
+.btn-icon { width: 18px; height: 18px; fill: currentColor; shape-rendering: crispEdges; }
+.btn-primary .btn-icon { animation: spin 6s linear infinite; }
+
+.card {
+  background: linear-gradient(180deg, var(--surface), var(--bg-2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: clamp(20px, 3vw, 32px) clamp(24px, 4.5vw, 44px);
+}
+
+.converter-section {
+  padding: 20px clamp(20px, 5vw, 64px) 80px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+.converter-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(96,165,250,.045) 1px, transparent 1.4px),
+    radial-gradient(1100px 600px at 0% 0%, rgba(59,130,246,.06), transparent 60%),
+    radial-gradient(900px 500px at 100% 100%, rgba(96,165,250,.045), transparent 65%),
+    linear-gradient(180deg, var(--surface), var(--bg-2));
+  background-size: 22px 22px, auto, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+}
+.converter-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22900%22%20height=%22900%22%20viewBox=%220%200%20900%20900%22%3E%3Cdefs%3E%3Cfilter%20id=%22t%22%20x=%220%22%20y=%220%22%20width=%22100%25%22%20height=%22100%25%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.018%22%20numOctaves=%221%22%20seed=%2211%22/%3E%3CfeColorMatrix%20type=%22matrix%22%20values=%220%200%200%200%200.376%200%200%200%200%200.647%200%200%200%200%200.980%200%200%200%20420%20-209%22/%3E%3C/filter%3E%3C/defs%3E%3Crect%20width=%22100%25%22%20height=%22100%25%22%20filter=%22url(%23t)%22/%3E%3C/svg%3E");
+  background-size: 900px 900px;
+  background-repeat: repeat;
+  opacity: .07;
+  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, transparent 55%, #000 100%);
+          mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, transparent 55%, #000 100%);
+}
+.converter-card.has-loaded-image #cropBlock { display: block; }
+.converter-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-lg);
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(96,165,250,.4), transparent 40%, transparent 60%, rgba(96,165,250,.2));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.card-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 700;
+}
+.head-icon { width: 22px; height: 22px; fill: var(--blue-2); shape-rendering: crispEdges; }
+.endpoint-pill {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--blue-3);
+  background: rgba(59,130,246,.1);
+  border: 1px solid rgba(59,130,246,.25);
+  padding: 5px 10px;
+  border-radius: 8px;
+  word-break: break-all;
+}
+
+.step-block {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+  margin-top: 24px;
+  position: relative;
+}
+.step-block:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+.step-block + .step-block::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 64px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(96,165,250,.55), transparent);
+}
+.step-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .12em;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.tabs {
+  display: inline-flex;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 16px;
+}
+.tab {
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  font-family: var(--sans);
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  background: linear-gradient(180deg, rgba(59,130,246,.18), rgba(59,130,246,.06));
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(96,165,250,.35) inset;
+}
+
+.source-inputs { display: flex; flex-direction: column; gap: 14px; }
+.source-row { width: 100%; }
+.source-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin: 2px 0;
+}
+.source-divider::before, .source-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.converter-card.has-loaded-image .source-inputs,
+.converter-card.has-loaded-image .step-block[data-step-name="source"] .step-header {
+  display: none;
+}
+.converter-card.has-loaded-image .step-block[data-step-name="source"] {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+  display: none;
+}
+
+.change-overlay {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(7,9,15,.78);
+  -webkit-backdrop-filter: blur(10px);
+          backdrop-filter: blur(10px);
+  border: 1px solid rgba(96,165,250,.35);
+  border-radius: 10px;
+  color: var(--blue-3);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, transform .12s, background .15s;
+}
+.change-overlay svg { width: 14px; height: 14px; }
+.change-overlay:hover {
+  border-color: var(--blue-2);
+  color: #fff;
+  background: rgba(15,23,42,.92);
+  transform: translateY(-1px);
+}
+.change-overlay:active { transform: translateY(0); }
+.converter-card.has-loaded-image .change-overlay { display: inline-flex; }
+
+.field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-family: var(--mono);
+}
+
+.input-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.input-row input[type="url"] { flex: 1 1 240px; min-width: 0; }
+
+input[type="url"], input[type="number"], .select {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 13px 16px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: var(--mono);
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+  width: 100%;
+}
+input[type="url"]::placeholder, input[type="number"]::placeholder { color: var(--muted-2); }
+input[type="url"]:focus, input[type="number"]:focus, .select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.18);
+}
+
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 38px;
+  cursor: pointer;
+}
+
+.icon-btn {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--mono);
+  letter-spacing: .04em;
+  min-height: 40px;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.icon-btn svg { width: 18px; height: 18px; }
+.icon-btn:hover { color: var(--blue-2); border-color: var(--border-strong); background: var(--elev); }
+.icon-btn:active { transform: scale(.97); }
+
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 36px 24px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+  text-align: center;
+}
+.drop-zone:hover, .drop-zone:focus-visible {
+  border-color: var(--blue);
+  background: rgba(59,130,246,.06);
+  color: var(--text);
+  outline: none;
+}
+.drop-zone.drag { border-color: var(--blue-2); background: rgba(59,130,246,.12); color: var(--text); }
+.drop-icon { width: 36px; height: 36px; color: var(--blue-2); }
+.drop-text strong { display: block; color: var(--text); font-size: 15px; margin-bottom: 4px; }
+.drop-text span { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+
+.crop-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.crop-spacer { flex: 1; min-width: 8px; }
+.crop-meta {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--blue-3);
+  background: rgba(59,130,246,.08);
+  border: 1px solid rgba(59,130,246,.2);
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+
+.crop-stage {
+  position: relative;
+  background: var(--stage-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  width: 100%;
+  max-width: 100%;
+  min-height: 280px;
+  max-height: min(70vh, 620px);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--stage-shadow);
+}
+.crop-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+@media (max-width: 640px) {
+  .crop-stage { padding: 10px; min-height: 220px; max-height: 60vh; }
+}
+
+img, video, canvas, svg { max-width: 100%; }
+
+@media (max-width: 720px) {
+  .converter-section { padding: 14px 8px 60px; }
+  .converter-card { padding: 16px 10px; border-radius: 14px; }
+  .card { padding: 16px 10px; border-radius: 14px; }
+  .hero { padding-left: 16px; padding-right: 16px; }
+  .nav { padding: 12px 14px; }
+  .card-head { flex-wrap: wrap; gap: 8px; }
+  .card-head h2 { font-size: 18px; }
+  .step-title { font-size: 18px; }
+  .step-sub { font-size: 13px; }
+  .step-block { padding-top: 18px; margin-top: 18px; }
+  .crop-toolbar { flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .crop-toolbar .icon-btn { font-size: 11px; padding: 0 9px; min-height: 34px; }
+  .crop-spacer { display: none; }
+  .crop-meta { width: 100%; text-align: center; order: 99; margin-top: 4px; }
+  .rotate-angle { width: 70px !important; }
+  .input-row { flex-wrap: wrap; gap: 8px; }
+  .input-row input { min-width: 0; flex: 1 1 100%; }
+  .input-row .btn, .input-row .icon-btn { flex: 1 1 auto; }
+  .dim-row { flex-wrap: wrap; }
+  .dim-row input[type="number"] { flex: 1 1 40%; min-width: 0; font-size: 15px; padding: 10px 8px; }
+  .preset-row { flex-wrap: wrap; gap: 6px; }
+  .preset { flex: 1 1 auto; min-width: 0; font-size: 12px; padding: 7px 10px; }
+  pre, code { font-size: 12px; }
+  .code-card pre { padding: 12px; overflow-x: auto; }
+  .format-grid { grid-template-columns: 1fr 1fr !important; gap: 8px; }
+  .behaviour-grid { grid-template-columns: 1fr !important; gap: 8px; }
+  .format-card, .behaviour-card { padding: 12px 14px; }
+  .endpoint-pill { font-size: 11px; padding: 4px 10px; }
+  .crop-stage { padding: 10px; min-height: 220px; max-height: 60vh; }
+  .also-bar { flex-wrap: wrap; gap: 6px; }
+  .also-chips { gap: 6px; }
+  .also-chip { font-size: 11px; padding: 6px 10px; }
+  .btn-full { padding: 12px 16px; font-size: 15px; }
+  .tool-nav-list { gap: 6px; }
+  .footer-inner { flex-direction: column; gap: 14px; text-align: center; padding: 18px; }
+  .badge { font-size: 11px; padding: 4px 10px; }
+  .lede { font-size: 14px; }
+  h1 { font-size: clamp(28px, 8vw, 38px) !important; }
+}
+
+@media (max-width: 420px) {
+  .converter-section { padding: 12px 6px 50px; }
+  .converter-card { padding: 14px 8px; }
+  .card-head h2 { font-size: 17px; }
+  .format-grid { grid-template-columns: 1fr !important; }
+}
+
+html[data-theme="light"] .cropper-modal { background-color: rgba(15,23,42,.35); }
+html[data-theme="light"] .cropper-view-box, html[data-theme="light"] .cropper-face { outline-color: var(--blue-2); }
+html[data-theme="light"] .grad { background: linear-gradient(120deg, var(--blue-3) 0%, var(--blue-2) 45%, #0b1220 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+html[data-theme="light"] .hero-grid { background-image: linear-gradient(rgba(37,99,235,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,.06) 1px, transparent 1px); }
+html[data-theme="light"] .hero-inner::before { background: radial-gradient(closest-side at 50% 60%, rgba(37,99,235,.18), transparent 72%), radial-gradient(closest-side at 50% 30%, rgba(37,99,235,.10), transparent 70%); }
+html[data-theme="light"] .badge { background: rgba(255,255,255,.7); }
+html[data-theme="light"] .btn-primary { color: #fff; }
+html[data-theme="light"] .btn-ghost { background: var(--surface); }
+html[data-theme="light"] .drop-zone { background: var(--surface); }
+html[data-theme="light"] .code-card pre { background: var(--surface); }
+html[data-theme="light"] .code-head { background: var(--surface-2); }
+html[data-theme="light"] .converter-card { background: var(--surface); }
+html[data-theme="light"] .c-key { color: #1d4ed8; }
+html[data-theme="light"] .c-str { color: #047857; }
+html[data-theme="light"] .c-mut { color: var(--muted); }
+.cropper-view-box, .cropper-face { outline: 1px solid var(--blue-2); }
+.cropper-line, .cropper-point { background-color: var(--blue-2); }
+.cropper-modal { background-color: #050810; }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+@media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.option-group {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+.option-label {
+  font-size: 11px;
+  color: var(--muted-2);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 10px;
+}
+.option-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.dim-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dim-row input[type="number"] {
+  flex: 1;
+  text-align: center;
+  padding: 11px 10px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+.dim-row input[type="number"]::-webkit-inner-spin-button,
+.dim-row input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.dim-suffix {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted-2);
+}
+.lock-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.lock-btn:hover { color: var(--text); border-color: var(--border-strong); }
+.lock-btn svg { width: 16px; height: 16px; }
+.lock-btn .lock-off { display: none; }
+.lock-btn:not(.locked) .lock-on { display: none; }
+.lock-btn:not(.locked) .lock-off { display: block; }
+.lock-btn.locked { color: var(--blue-2); border-color: rgba(96,165,250,.5); background: rgba(59,130,246,.08); }
+
+.preset-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.preset {
+  padding: 6px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: var(--mono);
+  cursor: pointer;
+  transition: all .15s;
+}
+.preset:hover { color: var(--text); border-color: var(--border-strong); }
+.preset.active { color: #fff; background: linear-gradient(180deg, rgba(59,130,246,.2), rgba(59,130,246,.08)); border-color: rgba(96,165,250,.6); }
+
+.seg {
+  flex: 1;
+  min-width: 70px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+  transition: all .15s;
+  user-select: none;
+}
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg:hover { color: var(--text); border-color: var(--border-strong); }
+.seg:has(input:checked) {
+  color: #fff;
+  background: linear-gradient(180deg, rgba(59,130,246,.18), rgba(59,130,246,.06));
+  border-color: rgba(96,165,250,.6);
+  box-shadow: 0 0 0 1px rgba(96,165,250,.2) inset;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  color: var(--text);
+  padding: 4px 0;
+}
+.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.toggle-track {
+  width: 40px; height: 22px;
+  border-radius: 999px;
+  background: var(--border);
+  position: relative;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  transition: transform .2s, background .2s;
+}
+.toggle input:checked ~ .toggle-track { background: var(--blue); }
+.toggle input:checked ~ .toggle-track .toggle-thumb { transform: translateX(18px); background: #fff; }
+.toggle-text { color: var(--muted); transition: color .15s; }
+.toggle:hover .toggle-text { color: var(--text); }
+
+.status {
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--muted);
+  min-height: 18px;
+}
+.status.error { color: #f87171; }
+.status.ok { color: #4ade80; }
+.status.loading::after {
+  content: '';
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--blue-2);
+  margin-left: 8px;
+  animation: blink 1s infinite;
+}
+@keyframes blink { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
+
+.result {
+  margin-top: 22px;
+  border-top: 1px solid var(--border);
+  padding-top: 22px;
+  animation: fade-up .35s ease-out;
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.result-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.meta-chip {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+.meta-chip strong { color: var(--blue-3); font-weight: 600; margin-right: 4px; }
+
+.result-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.result-actions .icon-btn { min-height: 32px; padding: 0 12px; font-size: 11px; }
+
+.preview-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(45deg, #0a0f1c 25%, transparent 25%) 0 0/16px 16px,
+    linear-gradient(-45deg, #0a0f1c 25%, transparent 25%) 0 0/16px 16px,
+    linear-gradient(45deg, transparent 75%, #0a0f1c 75%) 8px 8px/16px 16px,
+    linear-gradient(-45deg, transparent 75%, #0a0f1c 75%) 8px 8px/16px 16px,
+    #0d1424;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-height: 240px;
+  box-shadow: inset 0 1px 0 rgba(96,165,250,.08), inset 0 -40px 80px rgba(0,0,0,.35);
+}
+
+.preview-image {
+  width: min(480px, 100%);
+  max-width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 20px 60px rgba(0,0,0,.5);
+  border-radius: 4px;
+  display: block;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 32), 1fr);
+  width: min(480px, 90%);
+  aspect-ratio: var(--ratio, 1);
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 20px 60px rgba(0,0,0,.5);
+}
+.pixel { width: 100%; height: 100%; }
+
+.section-head {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto 40px;
+}
+.section-head h2 { font-size: clamp(26px, 4vw, 36px); margin-bottom: 10px; }
+.section-head p { color: var(--muted); margin: 0; }
+
+.examples {
+  padding: 60px clamp(20px, 5vw, 64px);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.examples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+.example {
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transition: all .15s ease;
+  font: inherit;
+  color: inherit;
+}
+.example:hover {
+  border-color: var(--blue);
+  background: var(--surface-2);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -10px rgba(59,130,246,.3);
+}
+.example-thumb {
+  width: 96px; height: 96px;
+  border-radius: 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  image-rendering: pixelated;
+  object-fit: contain;
+  padding: 8px;
+}
+.example-name { font-size: 13px; color: var(--text); font-weight: 500; }
+.example-url {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted-2);
+  word-break: break-all;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.how {
+  padding: 60px clamp(20px, 5vw, 64px);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  transition: border-color .15s;
+}
+.step:hover { border-color: var(--border-strong); }
+.step-num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--blue-2);
+  letter-spacing: .12em;
+  margin-bottom: 12px;
+}
+.step h3 { font-size: 18px; margin-bottom: 8px; }
+.step p { color: var(--muted); margin: 0; font-size: 14px; }
+
+.api {
+  padding: 60px clamp(20px, 5vw, 64px) 100px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+.code-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.code-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.code-card pre + .code-head { border-top: 1px solid var(--border); }
+.code-tag {
+  background: rgba(59,130,246,.15);
+  color: var(--blue-2);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: .04em;
+}
+.code-tag.tag-res { background: rgba(34, 197, 94, .15); color: #4ade80; }
+.code-path { color: var(--muted); }
+.code-card pre {
+  margin: 0;
+  padding: 20px;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--text);
+  overflow-x: auto;
+}
+.c-key { color: var(--blue-3); }
+.c-str { color: #4ade80; }
+.c-mut { color: var(--muted-2); }
+
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 28px clamp(20px, 5vw, 64px);
+  margin-top: 40px;
+  background: rgba(7,9,15,.6);
+}
+.footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.footer-meta {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+.footer-meta a { color: var(--muted); }
+.footer-meta a:hover { color: var(--blue-2); }
+
+::selection { background: rgba(59,130,246,.45); color: #fff; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+
+@keyframes pixl-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pixl-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.nav { animation: pixl-fade .6s ease-out both; }
+.hero-inner { animation: pixl-rise .8s cubic-bezier(.2,.7,.2,1) both; animation-delay: .05s; }
+.hero-grid { animation: pixl-fade 1.1s ease-out both; animation-delay: .25s; }
+.converter-card { animation: pixl-rise .8s cubic-bezier(.2,.7,.2,1) both; animation-delay: .2s; }
+
+.reveal {
+  animation: pixl-rise .8s cubic-bezier(.2,.7,.2,1) both;
+}
+.examples.reveal { animation-delay: .35s; }
+.how.reveal      { animation-delay: .45s; }
+.api.reveal      { animation-delay: .55s; }
+.footer.reveal   { animation-delay: .65s; }
+
+.step-block.appear { animation: pixl-rise .55s cubic-bezier(.2,.7,.2,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nav, .hero-inner, .hero-grid, .converter-card,
+  .reveal, .step-block.appear { animation: none !important; }
+}
+
+
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 10px;
+  margin: 0 0 28px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.stepper-item {
+  flex: 1 1 110px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted-2);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--sans);
+  position: relative;
+  transition: background .2s, color .2s;
+  min-width: 0;
+}
+.stepper-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.stepper-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stepper-item.is-active {
+  background: linear-gradient(180deg, rgba(59,130,246,.16), rgba(59,130,246,.04));
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(96,165,250,.35) inset;
+}
+.stepper-item.is-active .stepper-num {
+  background: var(--blue);
+  border-color: var(--blue-2);
+  color: #fff;
+}
+.stepper-item.is-done { color: var(--blue-3); }
+.stepper-item.is-done .stepper-num {
+  background: rgba(59,130,246,.18);
+  border-color: rgba(96,165,250,.5);
+  color: var(--blue-2);
+}
+
+.step-header { margin-bottom: 16px; }
+.step-header .step-tag { margin-bottom: 6px; }
+.step-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.step-sub {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.output-stack .step-block { border-top: 1px solid var(--border); padding-top: 24px; margin-top: 24px; }
+.output-stack > .step-block:first-of-type { border-top: 1px solid var(--border); padding-top: 24px; margin-top: 24px; }
+
+.preset-label {
+  font-size: 11px;
+  color: var(--muted-2);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin: 16px 0 8px;
+}
+
+.format-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 720px) {
+  .format-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.format-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s, background .15s, color .15s, transform .1s;
+  font-family: var(--sans);
+}
+.format-card:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+.format-card:active { transform: scale(.98); }
+.format-card.is-active {
+  color: #fff;
+  background: linear-gradient(180deg, rgba(59,130,246,.18), rgba(59,130,246,.06));
+  border-color: rgba(96,165,250,.6);
+  box-shadow: 0 0 0 1px rgba(96,165,250,.25) inset, var(--shadow-blue);
+}
+.format-name {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.format-card.is-active .format-name { color: var(--blue-3); }
+.format-desc {
+  font-size: 12px;
+  color: var(--muted-2);
+  font-family: var(--sans);
+}
+.format-card.is-active .format-desc { color: var(--blue-3); opacity: .85; }
+
+.behaviour-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 720px) {
+  .behaviour-grid { grid-template-columns: 1fr; }
+}
+.behaviour-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  position: relative;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.behaviour-card input { position: absolute; opacity: 0; pointer-events: none; }
+.behaviour-card:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface-2); }
+.behaviour-card:has(input:checked) {
+  color: #fff;
+  background: linear-gradient(180deg, rgba(59,130,246,.18), rgba(59,130,246,.06));
+  border-color: rgba(96,165,250,.6);
+  box-shadow: 0 0 0 1px rgba(96,165,250,.25) inset;
+}
+.behaviour-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: inherit;
+}
+.behaviour-card:has(input:checked) .behaviour-name { color: var(--blue-3); }
+.behaviour-desc {
+  font-size: 12.5px;
+  color: var(--muted-2);
+  line-height: 1.45;
+}
+.behaviour-card:has(input:checked) .behaviour-desc { color: var(--blue-3); opacity: .85; }
+
+.advanced {
+  margin-top: 18px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.advanced > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: var(--sans);
+  user-select: none;
+}
+.advanced > summary::-webkit-details-marker { display: none; }
+.advanced > summary:hover { color: var(--text); }
+.advanced-chevron {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted-2);
+  transition: transform .2s;
+}
+.advanced[open] > summary { color: var(--text); border-bottom: 1px solid var(--border); }
+.advanced[open] .advanced-chevron { transform: rotate(90deg); color: var(--blue-2); }
+.advanced-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.advanced-help {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted-2);
+  line-height: 1.5;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.tool-hero {
+  margin: 0 0 22px;
+  padding: 0;
+  text-align: left;
+}
+.tool-hero-eyebrow {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .14em;
+  color: var(--blue-3);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.tool-hero-title {
+  margin: 0 0 8px;
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1.15;
+}
+.tool-hero-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14.5px;
+  max-width: 60ch;
+  line-height: 1.55;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .workspace { grid-template-columns: 1fr; }
+}
+
+.tool-nav {
+  position: sticky;
+  top: 18px;
+  background: linear-gradient(180deg, var(--surface), var(--bg-2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-1);
+}
+@media (max-width: 980px) {
+  .tool-nav { position: static; padding: 14px; }
+}
+.tool-nav-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .12em;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.tool-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+@media (max-width: 980px) {
+  .tool-nav-list {
+    flex-direction: row;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+    margin: 0 -14px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
+.tool-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.tool-search:focus-within {
+  border-color: var(--blue-2);
+  background: var(--bg-2);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.18);
+}
+.tool-search-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--muted-2);
+  flex-shrink: 0;
+}
+.tool-search input {
+  all: unset;
+  flex: 1;
+  min-width: 0;
+  font: 500 13px var(--sans);
+  color: var(--text);
+  caret-color: var(--blue-2);
+}
+.tool-search input::placeholder { color: var(--muted-2); }
+.tool-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.tool-nav-empty {
+  margin: 4px 4px 10px;
+  padding: 10px 12px;
+  font: 500 12.5px var(--mono);
+  color: var(--muted-2);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,.015);
+}
+.tool-item.is-hidden { display: none !important; }
+@media (max-width: 980px) {
+  .tool-search { display: none; }
+  .tool-nav-empty { display: none !important; }
+}
+.tool-item {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--muted);
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+  font-family: var(--sans);
+}
+@media (max-width: 980px) {
+  .tool-item { flex: 0 0 auto; scroll-snap-align: start; }
+}
+.tool-item:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.tool-item:active { transform: scale(.98); }
+.tool-item:focus-visible {
+  outline: none;
+  border-color: var(--blue-2);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.18);
+}
+.tool-item.is-active {
+  background: linear-gradient(180deg, rgba(59,130,246,.18), rgba(59,130,246,.04));
+  border-color: rgba(96,165,250,.55);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(96,165,250,.25) inset;
+}
+.tool-glyph {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--blue-2);
+}
+.tool-item.is-active .tool-glyph {
+  background: rgba(59,130,246,.16);
+  border-color: rgba(96,165,250,.45);
+  color: var(--blue-3);
+}
+.tool-glyph svg { width: 18px; height: 18px; }
+.tool-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tool-item-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: inherit;
+  white-space: nowrap;
+}
+.tool-item-desc {
+  font-size: 11.5px;
+  color: var(--muted-2);
+  font-family: var(--mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tool-item.is-active .tool-item-desc { color: var(--blue-3); opacity: .8; }
+.tool-nav-foot {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--muted-2);
+  line-height: 1.5;
+  font-family: var(--sans);
+}
+@media (max-width: 980px) { .tool-nav-foot { display: none; } }
+
+.step-badge {
+  display: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.step-badge-primary {
+  color: var(--blue-3);
+  background: rgba(59,130,246,.14);
+  border: 1px solid rgba(96,165,250,.45);
+}
+.step-badge-optional {
+  color: var(--muted-2);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+}
+
+.converter-card:not([data-tool="all"]) .step-block.is-primary {
+  border-color: transparent;
+  box-shadow: none;
+  border-top-color: rgba(96,165,250,.4);
+}
+.converter-card:not([data-tool="all"]) .step-block.is-primary .step-badge-primary {
+  display: inline-flex;
+  align-items: center;
+}
+.converter-card:not([data-tool="all"]) .step-block.is-secondary {
+  display: none;
+}
+.converter-card:not([data-tool="all"]) .step-block.is-secondary.is-revealed {
+  display: block;
+  opacity: .92;
+}
+.step-block.tool-only-block { display: none; }
+.step-block.tool-only-block.is-primary,
+.step-block.tool-only-block.is-secondary.is-revealed { display: block; }
+.crop-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+  margin: 0 4px;
+  opacity: .7;
+}
+.rotate-angle {
+  width: 70px;
+  height: 32px;
+  padding: 0 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+}
+.rotate-angle:focus { border-color: var(--blue-2); }
+.rotate-angle::-webkit-inner-spin-button { opacity: .55; }
+.converter-card:not([data-tool="all"]) .step-block.is-secondary.is-revealed .step-badge-optional {
+  display: inline-flex;
+  align-items: center;
+}
+
+.also-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 24px 0 0;
+  padding: 12px 14px;
+  background: var(--bg-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+.also-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+.also-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.also-chip {
+  all: unset;
+  cursor: pointer;
+  padding: 6px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--sans);
+  transition: color .15s, border-color .15s, background .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.also-chip::before {
+  content: '+';
+  color: var(--blue-2);
+  font-weight: 700;
+}
+.also-chip:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface-2); }
+.also-chip.is-on {
+  color: #fff;
+  background: linear-gradient(180deg, rgba(59,130,246,.18), rgba(59,130,246,.06));
+  border-color: rgba(96,165,250,.55);
+}
+.also-chip.is-on::before { content: '\2212'; }
+
+@media (max-width: 980px) {
+  .workspace { grid-template-columns: 1fr; gap: 14px; }
+
+  .tool-hero { margin-bottom: 14px; }
+  .tool-hero-title { font-size: 22px; }
+  .tool-hero-sub { font-size: 13.5px; }
+
+  .tool-nav {
+    position: static;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  .tool-nav-title,
+  .tool-nav-foot { display: none; }
+
+  .tool-nav-list {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    gap: 8px;
+    padding: 4px 16px 8px;
+    margin: 0 -16px;
+  }
+  .tool-nav-list::-webkit-scrollbar { display: none; }
+
+  .tool-item {
+    all: unset;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px 8px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-2);
+    color: var(--muted);
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .tool-item:hover {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+  .tool-item.is-active {
+    background: linear-gradient(180deg, rgba(59,130,246,.22), rgba(59,130,246,.06));
+    border-color: rgba(96,165,250,.6);
+    color: #fff;
+    box-shadow: 0 0 0 1px rgba(96,165,250,.3) inset;
+  }
+  .tool-glyph {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--blue-2);
+    flex-shrink: 0;
+  }
+  .tool-item.is-active .tool-glyph {
+    background: rgba(59,130,246,.18);
+    border-color: rgba(96,165,250,.5);
+    color: var(--blue-3);
+  }
+  .tool-glyph svg { width: 14px; height: 14px; }
+  .tool-text {
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+  }
+  .tool-item-name {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .tool-item-desc { display: none; }
+
+  .stepper {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 8px;
+    margin-bottom: 18px;
+  }
+  .stepper::-webkit-scrollbar { display: none; }
+  .stepper-item {
+    flex: 0 0 auto;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .stepper-label { font-size: 12px; }
+
+  .also-bar { margin-top: 18px; padding: 10px 12px; gap: 8px; }
+  .also-label { font-size: 10.5px; }
+  .also-chip { font-size: 12px; padding: 5px 10px; }
+}
+
+@media (max-width: 520px) {
+  .tool-nav-list { padding-left: 14px; padding-right: 14px; margin: 0 -14px; }
+  .tool-item { padding: 7px 12px 7px 7px; gap: 7px; }
+  .tool-glyph { width: 26px; height: 26px; }
+  .tool-item-name { font-size: 12.5px; }
+}
+
+.t-short { display: none; }
+@media (max-width: 980px) {
+  .t-long { display: none; }
+  .t-short { display: inline; }
+}
+
+@media (max-width: 980px) {
+  .tool-nav { position: relative; }
+  .tool-nav::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -16px;
+    bottom: 8px;
+    width: 44px;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(7,9,15,0), var(--bg) 80%);
+    z-index: 2;
+  }
+  .tool-nav::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -16px;
+    bottom: 8px;
+    width: 20px;
+    pointer-events: none;
+    background: linear-gradient(to left, rgba(7,9,15,0), var(--bg) 80%);
+    z-index: 2;
+  }
+
+  .card { padding: 18px 16px; }
+  .card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 18px;
+    gap: 6px;
+  }
+  .card-head h2 { font-size: 19px; }
+  .endpoint-pill {
+    width: auto;
+    max-width: 100%;
+    font-size: 11.5px;
+    padding: 4px 9px;
+  }
+}
+
+@media (max-width: 520px) {
+  .tool-item { padding: 7px 11px 7px 6px; gap: 6px; }
+  .tool-glyph { width: 24px; height: 24px; border-radius: 7px; }
+  .tool-glyph svg { width: 13px; height: 13px; }
+  .tool-item-name { font-size: 12px; }
+  .tool-nav::after { width: 36px; }
+}
+</style>
+</head>
+<body>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="pixl-arrow" viewBox="0 0 16 16">
+      <rect x="4" y="2" width="1" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="10" y="2" width="1" height="1"/>
+      <rect x="3" y="3" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="11" y="3" width="1" height="1"/>
+      <rect x="2" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="11" y="4" width="1" height="1"/><rect x="12" y="4" width="1" height="1"/><rect x="14" y="4" width="1" height="1"/>
+      <rect x="1" y="5" width="1" height="1"/><rect x="2" y="5" width="1" height="1"/><rect x="12" y="5" width="1" height="1"/><rect x="13" y="5" width="1" height="1"/><rect x="14" y="5" width="1" height="1"/>
+      <rect x="1" y="6" width="1" height="1"/><rect x="2" y="6" width="1" height="1"/><rect x="11" y="6" width="1" height="1"/><rect x="12" y="6" width="1" height="1"/><rect x="13" y="6" width="1" height="1"/><rect x="14" y="6" width="1" height="1"/>
+      <rect x="1" y="7" width="1" height="1"/><rect x="2" y="7" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="11" y="7" width="1" height="1"/><rect x="12" y="7" width="1" height="1"/><rect x="13" y="7" width="1" height="1"/><rect x="14" y="7" width="1" height="1"/>
+      <rect x="1" y="8" width="1" height="1"/><rect x="2" y="8" width="1" height="1"/><rect x="11" y="8" width="1" height="1"/><rect x="12" y="8" width="1" height="1"/><rect x="13" y="8" width="1" height="1"/>
+      <rect x="1" y="9" width="1" height="1"/><rect x="2" y="9" width="1" height="1"/><rect x="12" y="9" width="1" height="1"/><rect x="13" y="9" width="1" height="1"/>
+      <rect x="1" y="10" width="1" height="1"/><rect x="2" y="10" width="1" height="1"/><rect x="12" y="10" width="1" height="1"/><rect x="13" y="10" width="1" height="1"/>
+      <rect x="2" y="11" width="1" height="1"/><rect x="3" y="11" width="1" height="1"/><rect x="11" y="11" width="1" height="1"/><rect x="12" y="11" width="1" height="1"/>
+      <rect x="3" y="12" width="1" height="1"/><rect x="4" y="12" width="1" height="1"/><rect x="10" y="12" width="1" height="1"/><rect x="11" y="12" width="1" height="1"/>
+      <rect x="4" y="13" width="1" height="1"/><rect x="5" y="13" width="1" height="1"/><rect x="6" y="13" width="1" height="1"/><rect x="7" y="13" width="1" height="1"/><rect x="8" y="13" width="1" height="1"/><rect x="9" y="13" width="1" height="1"/><rect x="10" y="13" width="1" height="1"/>
+    </symbol>
+  </svg>
+
+  <header class="nav">
+    <a class="brand" href="#top" aria-label="PIXL home">
+      <svg class="brand-icon spin-hover" viewBox="0 0 16 16" aria-hidden="true"><use href="#pixl-arrow"/></svg>
+      <span class="brand-word">PIXL<span class="brand-dot">.</span></span>
+    </a>
+    <div class="nav-right">
+      <nav class="nav-links">
+        <a href="#converter">Converter</a>
+        <a href="#api">API</a>
+      </nav>
+      <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle color theme" title="Toggle light / dark">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m4.93 19.07 1.41-1.41"/><path d="m17.66 6.34 1.41-1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="top">
+      <div class="hero-inner">
+        <div class="badge">
+          <span class="badge-dot"></span>
+          <span>resize · crop · reformat · pixel grids</span>
+        </div>
+        <h1>
+          Any image in.<br/>
+          <span class="grad">Any image out.</span>
+        </h1>
+        <p class="lede">
+          Drop a URL or upload a file, crop it however you like, pick a size and a format, and ship it. Need a 32×32 sprite or a 2048-wide WebP? Same tool.
+        </p>
+        <div class="hero-cta">
+          <a href="#converter" class="btn btn-primary">Start converting</a>
+          <a href="#api" class="btn btn-ghost">Read the docs</a>
+        </div>
+      </div>
+      <div class="hero-grid" aria-hidden="true"></div>
+    </section>
+
+    <section class="converter-section" id="converter">
+      <div class="tool-hero" id="toolHero">
+        <div class="tool-hero-eyebrow" id="toolHeroEyebrow">All-in-one image tool</div>
+        <h2 class="tool-hero-title" id="toolHeroTitle">Resize, crop, and convert any image</h2>
+        <p class="tool-hero-sub" id="toolHeroSub">Pick a tool on the left, or use them all in one go. Same engine, same file. No upload required twice.</p>
+      </div>
+
+      <div class="workspace">
+        <aside class="tool-nav" id="toolNav" aria-label="Choose a tool">
+          <div class="tool-nav-title">Tools</div>
+          <label class="tool-search" id="toolSearchWrap">
+            <svg class="tool-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="search" id="toolSearch" autocomplete="off" placeholder="Search tools" aria-label="Search converter tools">
+          </label>
+          <div class="tool-nav-empty" id="toolNavEmpty" hidden>No tools match that search.</div>
+          <div class="tool-nav-list">
+            <button class="tool-item is-active" type="button" data-tool="convert" data-href="/convert">
+              <span class="tool-glyph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h11"/><path d="M12 5l3 3-3 3"/><path d="M20 16H9"/><path d="M12 13l-3 3 3 3"/></svg>
+              </span>
+              <span class="tool-text">
+                <span class="tool-item-name"><span class="t-long">Convert format</span><span class="t-short">Convert</span></span>
+                <span class="tool-item-desc">PNG &middot; JPG &middot; WebP &middot; GIF &middot; BMP &middot; JSON</span>
+              </span>
+            </button>
+            <button class="tool-item" type="button" data-tool="resize" data-href="/resize">
+              <span class="tool-glyph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 4v16"/><path d="M4 9h16"/></svg>
+              </span>
+              <span class="tool-text">
+                <span class="tool-item-name"><span class="t-long">Resize image</span><span class="t-short">Resize</span></span>
+                <span class="tool-item-desc">Any size up to 4096px</span>
+              </span>
+            </button>
+            <button class="tool-item" type="button" data-tool="crop" data-href="/crop">
+              <span class="tool-glyph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v16a2 2 0 0 0 2 2h14"/><path d="M2 6h16a2 2 0 0 1 2 2v14"/></svg>
+              </span>
+              <span class="tool-text">
+                <span class="tool-item-name"><span class="t-long">Crop image</span><span class="t-short">Crop</span></span>
+                <span class="tool-item-desc">Free or aspect-locked</span>
+              </span>
+            </button>
+            <button class="tool-item" type="button" data-tool="pixelate" data-href="/pixelate">
+              <span class="tool-glyph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="5"/><rect x="10" y="3" width="5" height="5"/><rect x="17" y="3" width="4" height="5"/><rect x="3" y="10" width="5" height="5"/><rect x="10" y="10" width="5" height="5"/><rect x="3" y="17" width="5" height="4"/></svg>
+              </span>
+              <span class="tool-text">
+                <span class="tool-item-name"><span class="t-long">Pixelate</span><span class="t-short">Pixelate</span></span>
+                <span class="tool-item-desc">Pixel-art &middot; keeps full size</span>
+              </span>
+            </button>
+            <button class="tool-item" type="button" data-tool="invert" data-href="/invert">
+              <span class="tool-glyph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg>
+              </span>
+              <span class="tool-text">
+                <span class="tool-item-name"><span class="t-long">Invert colors</span><span class="t-short">Invert</span></span>
+                <span class="tool-item-desc">Negative &middot; keeps alpha</span>
+              </span>
+            </button>
+            <button class="tool-item" type="button" data-tool="mirror" data-href="/mirror">
+              <span class="tool-glyph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M3 7l6 5-6 5z"/><path d="M21 7l-6 5 6 5z"/></svg>
+              </span>
+              <span class="tool-text">
+                <span class="tool-item-name"><span class="t-long">Mirror image</span><span class="t-short">Mirror</span></span>
+                <span class="tool-item-desc">Flip horizontal / vertical</span>
+              </span>
+            </button>
+            <button class="tool-item" type="button" data-tool="grid" data-href="/pixel-grid">
+              <span class="tool-glyph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 9h16"/><path d="M4 14h16"/><path d="M9 4v16"/><path d="M14 4v16"/></svg>
+              </span>
+              <span class="tool-text">
+                <span class="tool-item-name"><span class="t-long">Pixel grid JSON</span><span class="t-short">Pixel grid</span></span>
+                <span class="tool-item-desc">RGB array for sprites</span>
+              </span>
+            </button>
+          </div>
+          <div class="tool-nav-foot">Switch tools any time. Your image stays loaded.</div>
+        </aside>
+
+        <div class="workspace-main">
+          <div class="card converter-card" id="converterCard" data-tool="convert">
+            <div class="card-head">
+              <h2>
+                <svg class="head-icon" viewBox="0 0 16 16"><use href="#pixl-arrow"/></svg>
+                <span id="converterCardTitle">Converter</span>
+              </h2>
+              <span class="endpoint-pill" id="endpointPill">/convert-image</span>
+            </div>
+
+            <div class="step-block" data-step-block="1" data-step-name="source">
+              <header class="step-header">
+                <div class="step-tag">Source</div>
+                <h3 class="step-title">Choose your image</h3>
+                <p class="step-sub">Paste a URL or drop a file from your computer. PNG, JPG, WebP, GIF, and BMP all work.</p>
+              </header>
+              <div class="source-inputs">
+                <div class="source-row" data-panel="url">
+                  <label class="field-label" for="imageUrl">Image URL</label>
+                  <div class="input-row">
+                    <input id="imageUrl" type="url" autocomplete="off" spellcheck="false"
+                           placeholder="https://example.com/image.png" />
+                    <button id="pasteBtn" class="icon-btn" title="Paste URL or image from clipboard" type="button">PASTE</button>
+                    <button id="loadUrlBtn" class="btn btn-ghost btn-compact" type="button">Load</button>
+                  </div>
+                </div>
+
+                <div class="source-divider" aria-hidden="true"><span>or</span></div>
+
+                <div class="source-row" data-panel="upload">
+                  <label class="field-label">Upload an image</label>
+                  <div class="drop-zone" id="dropZone" tabindex="0" role="button" aria-label="Upload image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="drop-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <div class="drop-text">
+                      <strong>Drop, click, or paste image</strong>
+                      <span>PNG &middot; JPG &middot; WebP &middot; GIF &middot; BMP &middot; Ctrl/Cmd+V works anywhere</span>
+                    </div>
+                    <input id="fileInput" type="file" accept="image/*" hidden />
+                  </div>
+                </div>
+              </div>
+
+              <div class="source-loaded" id="sourceLoaded" hidden></div>
+            </div>
+
+            <div class="step-block hidden" id="cropBlock" data-step-block="2" data-step-name="crop">
+              <header class="step-header">
+                <div class="step-tag">Crop <span class="step-badge step-badge-primary">Primary</span><span class="step-badge step-badge-optional">Optional</span></div>
+                <h3 class="step-title">Crop your image</h3>
+                <p class="step-sub">Drag the box to trim, or use Full to skip cropping entirely.</p>
+              </header>
+              <div class="crop-toolbar">
+                <button class="icon-btn" id="resetCrop" type="button">RESET</button>
+                <button class="icon-btn" id="fullCrop" type="button">FULL</button>
+                <span class="crop-divider" aria-hidden="true"></span>
+                <button class="icon-btn" id="rotateLeftBtn" type="button" title="Rotate 90\u00b0 counter-clockwise">&#8634; 90&deg;</button>
+                <button class="icon-btn" id="rotateRightBtn" type="button" title="Rotate 90\u00b0 clockwise">90&deg; &#8635;</button>
+                <input id="rotateAngleInput" type="number" class="rotate-angle" min="-360" max="360" step="1" value="0" aria-label="Rotation angle" title="Free rotation angle" />
+                <button class="icon-btn" id="rotateResetBtn" type="button" title="Reset rotation">UNDO</button>
+                <div class="crop-spacer"></div>
+                <span class="crop-meta" id="cropMeta">&mdash;</span>
+              </div>
+              <div class="crop-stage">
+                <button class="change-overlay" id="changeImageBtn" type="button" title="Choose a different image">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+                  Change image
+                </button>
+                <img id="cropImage" alt="" />
+              </div>
+            </div>
+
+            <div id="outputBlock" class="hidden output-stack">
+
+              <div class="also-bar" id="alsoBar" hidden>
+                <span class="also-label">Also adjust:</span>
+                <div class="also-chips" id="alsoChips"></div>
+              </div>
+
+              <div class="step-block tool-only-block" id="pixelateBlock" data-step-block="3" data-step-name="pixelate">
+                <header class="step-header">
+                  <div class="step-tag">Pixelate <span class="step-badge step-badge-primary">Primary</span></div>
+                  <h3 class="step-title">Pixel-art settings</h3>
+                  <p class="step-sub">Pick a block size and a smoothing mode. Output keeps the source dimensions &mdash; no shrinking.</p>
+                </header>
+                <div class="option-group">
+                  <div class="option-label">Block size</div>
+                  <div class="dim-row">
+                    <input id="pixelBlockInput" type="number" min="2" max="128" value="10" />
+                    <span class="dim-suffix">px / block</span>
+                  </div>
+                  <div class="preset-label">Quick presets</div>
+                  <div class="preset-row">
+                    <button class="preset" data-pixel-preset="4" type="button">4</button>
+                    <button class="preset" data-pixel-preset="8" type="button">8</button>
+                    <button class="preset" data-pixel-preset="12" type="button">12</button>
+                    <button class="preset" data-pixel-preset="16" type="button">16</button>
+                    <button class="preset" data-pixel-preset="24" type="button">24</button>
+                    <button class="preset" data-pixel-preset="32" type="button">32</button>
+                  </div>
+                  <div class="option-label" style="margin-top:18px">Pixel mode</div>
+                  <div class="behaviour-grid">
+                    <label class="behaviour-card">
+                      <input type="radio" name="pixelMode" value="simple" checked />
+                      <span class="behaviour-name">Simple</span>
+                      <span class="behaviour-desc">Crisp blocks. Nearest neighbour. Best for sprites.</span>
+                    </label>
+                    <label class="behaviour-card">
+                      <input type="radio" name="pixelMode" value="og" />
+                      <span class="behaviour-name">OG</span>
+                      <span class="behaviour-desc">Averaged blocks. Softer, photo-style mosaic.</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-block tool-only-block" id="invertBlock" data-step-block="3" data-step-name="invert">
+                <header class="step-header">
+                  <div class="step-tag">Invert <span class="step-badge step-badge-primary">Primary</span></div>
+                  <h3 class="step-title">Invert colors</h3>
+                  <p class="step-sub">Flips every RGB channel into its negative. Alpha channel passes through unchanged.</p>
+                </header>
+                <div class="option-group">
+                  <p class="advanced-help">No options needed &mdash; just pick a format below and hit convert.</p>
+                </div>
+              </div>
+
+              <div class="step-block tool-only-block" id="mirrorBlock" data-step-block="3" data-step-name="mirror">
+                <header class="step-header">
+                  <div class="step-tag">Mirror <span class="step-badge step-badge-primary">Primary</span></div>
+                  <h3 class="step-title">Mirror / flip image</h3>
+                  <p class="step-sub">Flip horizontally, vertically, or both at once.</p>
+                </header>
+                <div class="behaviour-grid">
+                  <label class="behaviour-card">
+                    <input type="radio" name="mirrorAxis" value="h" checked />
+                    <span class="behaviour-name">Horizontal</span>
+                    <span class="behaviour-desc">Left &harr; right.</span>
+                  </label>
+                  <label class="behaviour-card">
+                    <input type="radio" name="mirrorAxis" value="v" />
+                    <span class="behaviour-name">Vertical</span>
+                    <span class="behaviour-desc">Top &harr; bottom.</span>
+                  </label>
+                  <label class="behaviour-card">
+                    <input type="radio" name="mirrorAxis" value="both" />
+                    <span class="behaviour-name">Both</span>
+                    <span class="behaviour-desc">Flips on both axes &mdash; like a 180&deg; rotate.</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="step-block" data-step-block="3" data-step-name="size">
+                <header class="step-header">
+                  <div class="step-tag">Size <span class="step-badge step-badge-primary">Primary</span><span class="step-badge step-badge-optional">Optional</span></div>
+                  <h3 class="step-title">Set your dimensions</h3>
+                  <p class="step-sub">Type a custom size, or pick a sprite preset. Lock the ratio to scale proportionally.</p>
+                </header>
+                <div class="option-group">
+                  <div class="option-label">Width &times; Height</div>
+                  <div class="dim-row">
+                    <input id="widthInput" type="number" min="1" max="4096" value="32" />
+                    <button id="lockBtn" class="lock-btn locked" type="button" aria-label="Lock aspect ratio">
+                      <svg class="lock-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <svg class="lock-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                    </button>
+                    <input id="heightInput" type="number" min="1" max="4096" value="32" />
+                    <span class="dim-suffix">px</span>
+                  </div>
+                  <div class="preset-label">Quick presets</div>
+                  <div class="preset-row">
+                    <button class="preset" data-preset="32x32" type="button">32&times;32</button>
+                    <button class="preset" data-preset="64x64" type="button">64&times;64</button>
+                    <button class="preset" data-preset="128x128" type="button">128&times;128</button>
+                    <button class="preset" data-preset="256x256" type="button">256&times;256</button>
+                    <button class="preset" data-preset="512x512" type="button">512&times;512</button>
+                    <button class="preset" data-preset="1024x1024" type="button">1024&sup2;</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-block" data-step-block="4" data-step-name="format">
+                <header class="step-header">
+                  <div class="step-tag">Format <span class="step-badge step-badge-primary">Primary</span><span class="step-badge step-badge-optional">Optional</span></div>
+                  <h3 class="step-title">Pick an output format</h3>
+                  <p class="step-sub">Each format is best for a different job. Click a card to choose.</p>
+                </header>
+                <div class="format-grid" id="formatGrid" role="radiogroup" aria-label="Output format">
+                  <button class="format-card is-active" data-format="png" type="button" role="radio" aria-checked="true">
+                    <span class="format-name">PNG</span>
+                    <span class="format-desc">Transparent &middot; lossless</span>
+                  </button>
+                  <button class="format-card" data-format="jpeg" type="button" role="radio" aria-checked="false">
+                    <span class="format-name">JPEG</span>
+                    <span class="format-desc">Smallest &middot; lossy</span>
+                  </button>
+                  <button class="format-card" data-format="webp" type="button" role="radio" aria-checked="false">
+                    <span class="format-name">WebP</span>
+                    <span class="format-desc">Modern &middot; efficient</span>
+                  </button>
+                  <button class="format-card" data-format="bmp" type="button" role="radio" aria-checked="false">
+                    <span class="format-name">BMP</span>
+                    <span class="format-desc">Raw &middot; uncompressed</span>
+                  </button>
+                  <button class="format-card" data-format="gif" type="button" role="radio" aria-checked="false">
+                    <span class="format-name">GIF</span>
+                    <span class="format-desc">Paletted &middot; 256 colors</span>
+                  </button>
+                  <button class="format-card" data-format="json" type="button" role="radio" aria-checked="false">
+                    <span class="format-name">JSON</span>
+                    <span class="format-desc">Pixel grid &middot; sprites</span>
+                  </button>
+                </div>
+                <select id="formatSelect" class="visually-hidden" aria-hidden="true" tabindex="-1">
+                  <option value="png">PNG &middot; transparent</option>
+                  <option value="jpeg">JPEG &middot; smallest</option>
+                  <option value="webp">WebP &middot; modern</option>
+                  <option value="bmp">BMP &middot; raw</option>
+                  <option value="gif">GIF &middot; paletted</option>
+                  <option value="json">Pixel Grid &middot; JSON</option>
+                </select>
+              </div>
+
+              <div class="step-block tool-only-block" data-step-block="5" data-step-name="behaviour">
+                <header class="step-header">
+                  <div class="step-tag">Behaviour <span class="step-badge step-badge-primary">Primary</span><span class="step-badge step-badge-optional">Optional</span></div>
+                  <h3 class="step-title">How should we resize?</h3>
+                  <p class="step-sub">Tell PIXL what to do when the input shape doesn't match your output ratio.</p>
+                </header>
+                <div class="behaviour-grid">
+                  <label class="behaviour-card">
+                    <input type="radio" name="resizeMode" value="crop" checked />
+                    <span class="behaviour-name">Crop</span>
+                    <span class="behaviour-desc">Fills exactly. Trims any extra edges.</span>
+                  </label>
+                  <label class="behaviour-card">
+                    <input type="radio" name="resizeMode" value="stretch" />
+                    <span class="behaviour-name">Stretch</span>
+                    <span class="behaviour-desc">Fills exactly. May distort the image.</span>
+                  </label>
+                  <label class="behaviour-card">
+                    <input type="radio" name="resizeMode" value="fit" />
+                    <span class="behaviour-name">Fit</span>
+                    <span class="behaviour-desc">Keeps aspect. Adds transparent padding.</span>
+                  </label>
+                </div>
+
+                <details class="advanced" id="advancedBlock">
+                  <summary><span class="advanced-summary-text">Pixel art &amp; advanced</span><span class="advanced-chevron">&rsaquo;</span></summary>
+                  <div class="advanced-body">
+                    <label class="toggle">
+                      <input type="checkbox" id="simpleMode" />
+                      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                      <span class="toggle-text">Pixel art mode (nearest neighbour)</span>
+                    </label>
+                    <p class="advanced-help">Best for sprites and low-res art. Keeps crisp edges instead of smoothing them.</p>
+                  </div>
+                </details>
+              </div>
+
+              <button id="convertBtn" class="btn btn-primary btn-full" type="button">
+                <svg class="btn-icon" viewBox="0 0 16 16"><use href="#pixl-arrow"/></svg>
+                <span id="convertLabel">Convert</span>
+              </button>
+
+              <div class="status" id="status" role="status" aria-live="polite"></div>
+
+              <div class="result hidden" id="result">
+                <div class="result-head">
+                  <div class="result-meta">
+                    <span class="meta-chip"><strong id="metaSize">&mdash;</strong> source</span>
+                    <span class="meta-chip"><strong id="metaFinal">&mdash;</strong> output</span>
+                    <span class="meta-chip"><strong id="metaMethod">&mdash;</strong> method</span>
+                    <span class="meta-chip"><strong id="metaWeight">&mdash;</strong> size</span>
+                    <span class="meta-chip"><strong id="metaTime">&mdash;</strong> ms</span>
+                  </div>
+                  <div class="result-actions" id="resultActions"></div>
+                </div>
+                <div class="preview-wrap" id="previewWrap"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="api reveal" id="api">
+      <div class="section-head">
+        <h2>API</h2>
+        <p>One endpoint, backward compatible. Omit everything and you still get a 32×32 JSON pixel grid.</p>
+      </div>
+      <div class="code-card">
+        <div class="code-head">
+          <span class="code-tag">GET / POST</span>
+          <span class="code-path">/convert-image</span>
+        </div>
+<pre><code><span class="c-key">url</span>=&lt;image url&gt;          <span class="c-mut">required when no file uploaded</span>
+<span class="c-key">file</span>=&lt;multipart upload&gt;   <span class="c-mut">POST alternative to url</span>
+<span class="c-key">width</span>=1..4096            <span class="c-mut">default 32</span>
+<span class="c-key">height</span>=1..4096           <span class="c-mut">default 32</span>
+<span class="c-key">format</span>=png|jpeg|webp|bmp|gif|json   <span class="c-mut">default json</span>
+<span class="c-key">mode</span>=crop|stretch|fit    <span class="c-mut">default crop</span>
+<span class="c-key">simple</span>=true|false        <span class="c-mut">nearest-neighbour pixel mode</span>
+<span class="c-key">crop_x</span>,<span class="c-key">crop_y</span>,<span class="c-key">crop_w</span>,<span class="c-key">crop_h</span>     <span class="c-mut">pre-crop in source pixels</span></code></pre>
+        <div class="code-head">
+          <span class="code-tag tag-res">200</span>
+          <span class="code-path">image/&lt;format&gt; · or application/json</span>
+        </div>
+<pre><code>{
+  <span class="c-key">"pixels"</span>: [{ <span class="c-key">"R"</span>:0, <span class="c-key">"G"</span>:0, <span class="c-key">"B"</span>:0 }, ...],
+  <span class="c-key">"final_size"</span>: [w, h],
+  <span class="c-key">"original_size"</span>: [w, h],
+  <span class="c-key">"resize_method"</span>: <span class="c-str">"crop"</span>,
+  <span class="c-key">"processing_time"</span>: 0.04
+}</code></pre>
+      </div>
+
+      <div class="code-card">
+        <div class="code-head">
+          <span class="code-tag">GET / POST</span>
+          <span class="code-path">/api/image/pixelate</span>
+        </div>
+<pre><code><span class="c-key">url</span>=&lt;image url&gt;          <span class="c-mut">required when no file uploaded</span>
+<span class="c-key">file</span>=&lt;multipart upload&gt;   <span class="c-mut">POST alternative to url</span>
+<span class="c-key">block</span>=2..128             <span class="c-mut">block size in source pixels, default 10</span>
+<span class="c-key">mode</span>=simple|og          <span class="c-mut">simple = nearest neighbour (crisp), og = averaged (smooth)</span>
+<span class="c-key">format</span>=png|jpeg|webp|bmp|gif   <span class="c-mut">default png</span></code></pre>
+        <div class="code-head">
+          <span class="code-tag tag-res">200</span>
+          <span class="code-path">image/&lt;format&gt; \u00b7 output keeps source dimensions</span>
+        </div>
+      </div>
+
+      <div class="code-card">
+        <div class="code-head">
+          <span class="code-tag">GET / POST</span>
+          <span class="code-path">/api/image/invert</span>
+        </div>
+<pre><code><span class="c-key">url</span>=&lt;image url&gt;          <span class="c-mut">required when no file uploaded</span>
+<span class="c-key">file</span>=&lt;multipart upload&gt;   <span class="c-mut">POST alternative to url</span>
+<span class="c-key">format</span>=png|jpeg|webp|bmp|gif   <span class="c-mut">default png \u00b7 alpha preserved</span></code></pre>
+      </div>
+
+      <div class="code-card">
+        <div class="code-head">
+          <span class="code-tag">GET / POST</span>
+          <span class="code-path">/api/image/mirror</span>
+        </div>
+<pre><code><span class="c-key">url</span>=&lt;image url&gt;          <span class="c-mut">required when no file uploaded</span>
+<span class="c-key">file</span>=&lt;multipart upload&gt;   <span class="c-mut">POST alternative to url</span>
+<span class="c-key">axis</span>=h|v|both           <span class="c-mut">default h \u00b7 horizontal / vertical / both</span>
+<span class="c-key">format</span>=png|jpeg|webp|bmp|gif   <span class="c-mut">default png</span></code></pre>
+      </div>
+
+      <div class="code-card">
+        <div class="code-head">
+          <span class="code-tag">GET / POST</span>
+          <span class="code-path">/api/image/rotate</span>
+        </div>
+<pre><code><span class="c-key">url</span>=&lt;image url&gt;          <span class="c-mut">required when no file uploaded</span>
+<span class="c-key">file</span>=&lt;multipart upload&gt;   <span class="c-mut">POST alternative to url</span>
+<span class="c-key">angle</span>=-360..360         <span class="c-mut">degrees, positive = clockwise, default 0</span>
+<span class="c-key">expand</span>=true|false        <span class="c-mut">expand canvas to fit rotated image, default true</span>
+<span class="c-key">format</span>=png|jpeg|webp|bmp|gif   <span class="c-mut">default png</span></code></pre>
+      </div>
+
+      <div class="code-card">
+        <div class="code-head">
+          <span class="code-tag">GET / POST</span>
+          <span class="code-path">/api/image/format</span>
+        </div>
+<pre><code><span class="c-key">url</span>=&lt;image url&gt;          <span class="c-mut">required when no file uploaded</span>
+<span class="c-key">file</span>=&lt;multipart upload&gt;   <span class="c-mut">POST alternative to url</span>
+<span class="c-key">format</span>=png|jpeg|webp|bmp|gif   <span class="c-mut">target format, default png</span>
+<span class="c-key">quality</span>=1..100          <span class="c-mut">jpeg / webp quality, default 92</span></code></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer reveal">
+    <div class="footer-inner">
+      <a class="brand brand-sm" href="#top">
+        <svg class="brand-icon" viewBox="0 0 16 16"><use href="#pixl-arrow"/></svg>
+        <span class="brand-word">PIXL<span class="brand-dot">.</span></span>
+      </a>
+      <div class="footer-meta">
+        <span>Built for sprites, scripts, and silly little squares.</span>
+        <a href="https://vadrifts.onrender.com" target="_blank" rel="noopener">part of Vadrifts ↗</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+  <script>
+const ENDPOINT = '/convert-image';
+
+const els = {
+  endpointPill: byId('endpointPill'),
+  tabs: document.querySelectorAll('[data-tab]'),
+  panels: document.querySelectorAll('[data-panel]'),
+  url: byId('imageUrl'),
+  paste: byId('pasteBtn'),
+  loadUrl: byId('loadUrlBtn'),
+  dropZone: byId('dropZone'),
+  fileInput: byId('fileInput'),
+  cropBlock: byId('cropBlock'),
+  cropImage: byId('cropImage'),
+  resetCrop: byId('resetCrop'),
+  fullCrop: byId('fullCrop'),
+  rotateLeft: byId('rotateLeftBtn'),
+  rotateRight: byId('rotateRightBtn'),
+  rotateAngle: byId('rotateAngleInput'),
+  rotateReset: byId('rotateResetBtn'),
+  cropMeta: byId('cropMeta'),
+  outputBlock: byId('outputBlock'),
+  width: byId('widthInput'),
+  height: byId('heightInput'),
+  lockBtn: byId('lockBtn'),
+  presets: document.querySelectorAll('.preset[data-preset]'),
+  pixelBlock: byId('pixelBlockInput'),
+  pixelPresets: document.querySelectorAll('.preset[data-pixel-preset]'),
+  pixelModeRadios: document.querySelectorAll('input[name="pixelMode"]'),
+  mirrorAxisRadios: document.querySelectorAll('input[name="mirrorAxis"]'),
+  format: byId('formatSelect'),
+  simple: byId('simpleMode'),
+  convert: byId('convertBtn'),
+  convertLabel: byId('convertLabel'),
+  status: byId('status'),
+  result: byId('result'),
+  resultActions: byId('resultActions'),
+  previewWrap: byId('previewWrap'),
+  metaSize: byId('metaSize'),
+  metaFinal: byId('metaFinal'),
+  metaMethod: byId('metaMethod'),
+  metaWeight: byId('metaWeight'),
+  metaTime: byId('metaTime'),
+  examplesGrid: byId('examplesGrid'),
+};
+
+let currentTool = 'all';
+
+const state = {
+  source: 'url',
+  cropper: null,
+  loadedSource: null,
+  loadedFile: null,
+  loadedNaturalSize: null,
+  lastResult: null,
+  aspectLocked: true,
+};
+
+const EXAMPLES = [
+  { name: 'Vadrifts logo', url: 'https://i.imgur.com/ePueN25.png' },
+  { name: 'Fire emoji', url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/1f525.png' },
+  { name: 'Rocket emoji', url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/1f680.png' },
+  { name: 'Star emoji', url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/2b50.png' },
+  { name: 'Lightning', url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/26a1.png' },
+  { name: 'Skull', url: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/1f480.png' },
+];
+
+function byId(id) { return document.getElementById(id); }
+
+function init() {
+  bindTabs();
+  bindUrlInput();
+  bindUploader();
+  bindGlobalPaste();
+  bindCropControls();
+  bindOutputControls();
+  els.convert.addEventListener('click', convert);
+  renderExamples();
+  updateEndpointPill();
+  updateConvertLabel();
+}
+
+function updateConvertLabel() {
+  if (!els.convertLabel) return;
+  const f = els.format.value;
+  const pretty = f === 'json' ? 'Pixel Grid' :
+                 f === 'jpeg' ? 'JPEG' :
+                 f.toUpperCase();
+  if (currentTool === 'pixelate')      els.convertLabel.textContent = 'Pixelate image';
+  else if (currentTool === 'invert')   els.convertLabel.textContent = 'Invert colors';
+  else if (currentTool === 'mirror')   els.convertLabel.textContent = 'Mirror image';
+  else                                  els.convertLabel.textContent = `Convert to ${pretty}`;
+}
+
+function animateReveal(el) {
+  if (!el) return;
+  const wasHidden = el.classList.contains('hidden');
+  el.classList.remove('hidden');
+  if (wasHidden) {
+    el.classList.remove('appear');
+    void el.offsetWidth;
+    el.classList.add('appear');
+  }
+}
+
+function bindTabs() {
+  els.tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      state.source = target;
+      els.tabs.forEach(t => {
+        const active = t.dataset.tab === target;
+        t.classList.toggle('active', active);
+        t.setAttribute('aria-selected', active);
+      });
+      els.panels.forEach(p => {
+        p.classList.toggle('hidden', p.dataset.panel !== target);
+      });
+    });
+  });
+}
+
+function bindUrlInput() {
+  els.loadUrl.addEventListener('click', loadFromUrl);
+  els.url.addEventListener('keydown', e => { if (e.key === 'Enter') loadFromUrl(); });
+  els.paste.addEventListener('click', async () => {
+    if (await tryPasteImageFromClipboard()) return;
+    try {
+      const t = await navigator.clipboard.readText();
+      if (t && t.trim()) {
+        els.url.value = t.trim();
+        els.url.focus();
+      } else {
+        setStatus('Clipboard is empty.', 'error');
+      }
+    } catch {
+      setStatus('Clipboard access blocked — paste manually with Ctrl/Cmd+V.', 'error');
+    }
+  });
+}
+
+async function tryPasteImageFromClipboard() {
+  if (!navigator.clipboard || !navigator.clipboard.read) return false;
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      for (const type of item.types) {
+        if (type.startsWith('image/')) {
+          const blob = await item.getType(type);
+          const ext = (type.split('/')[1] || 'png').split('+')[0];
+          const file = new File([blob], `pasted-${Date.now()}.${ext}`, { type });
+          await loadFromFile(file);
+          return true;
+        }
+      }
+    }
+  } catch {}
+  return false;
+}
+
+function bindGlobalPaste() {
+  document.addEventListener('paste', e => {
+    const dt = e.clipboardData;
+    if (!dt) return;
+    const items = dt.items ? Array.from(dt.items) : [];
+    for (const it of items) {
+      if (it.kind === 'file' && it.type && it.type.startsWith('image/')) {
+        const f = it.getAsFile();
+        if (f) {
+          e.preventDefault();
+          loadFromFile(f);
+          return;
+        }
+      }
+    }
+    const files = dt.files ? Array.from(dt.files) : [];
+    for (const f of files) {
+      if (f.type && f.type.startsWith('image/')) {
+        e.preventDefault();
+        loadFromFile(f);
+        return;
+      }
+    }
+  });
+}
+
+function bindUploader() {
+  els.dropZone.addEventListener('click', () => els.fileInput.click());
+  els.dropZone.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); els.fileInput.click(); }
+  });
+  els.fileInput.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) loadFromFile(f);
+  });
+  els.dropZone.addEventListener('dragover', e => { e.preventDefault(); els.dropZone.classList.add('drag'); });
+  els.dropZone.addEventListener('dragleave', () => els.dropZone.classList.remove('drag'));
+  els.dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    els.dropZone.classList.remove('drag');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFromFile(f);
+  });
+
+  const changeBtn = byId('changeImageBtn');
+  if (changeBtn) {
+    changeBtn.addEventListener('click', () => {
+      const card = document.getElementById('converterCard');
+      if (card) card.classList.remove('has-loaded-image');
+      state.loadedSource = null;
+      state.loadedFile = null;
+      state.loadedNaturalSize = null;
+      if (state.cropper) { state.cropper.destroy(); state.cropper = null; }
+      els.url.value = '';
+      if (els.fileInput) els.fileInput.value = '';
+      els.cropBlock.classList.add('hidden');
+      if (els.outputBlock) els.outputBlock.classList.add('hidden');
+      setStatus('');
+      els.url.focus();
+      els.url.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+}
+
+function bindCropControls() {
+  els.resetCrop.addEventListener('click', () => state.cropper && state.cropper.reset());
+  els.fullCrop.addEventListener('click', () => {
+    if (!state.cropper) return;
+    const data = state.cropper.getImageData();
+    state.cropper.setData({ x: 0, y: 0, width: data.naturalWidth, height: data.naturalHeight });
+  });
+  if (els.rotateLeft) els.rotateLeft.addEventListener('click', () => applyRotation(-90, true));
+  if (els.rotateRight) els.rotateRight.addEventListener('click', () => applyRotation(90, true));
+  if (els.rotateReset) els.rotateReset.addEventListener('click', () => setRotation(0));
+  if (els.rotateAngle) {
+    els.rotateAngle.addEventListener('change', () => {
+      const v = parseInt(els.rotateAngle.value, 10);
+      if (Number.isFinite(v)) setRotation(v);
+    });
+    els.rotateAngle.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const v = parseInt(els.rotateAngle.value, 10);
+        if (Number.isFinite(v)) setRotation(v);
+      }
+    });
+  }
+}
+
+function applyRotation(delta, additive) {
+  if (!state.cropper) return;
+  const cur = state.cropper.getData(true).rotate || 0;
+  const next = additive ? cur + delta : delta;
+  state.cropper.rotateTo(next);
+  if (els.rotateAngle) els.rotateAngle.value = ((next % 360) + 360) % 360;
+}
+
+function setRotation(angle) {
+  if (!state.cropper) return;
+  state.cropper.rotateTo(angle);
+  if (els.rotateAngle) els.rotateAngle.value = ((angle % 360) + 360) % 360;
+}
+
+function currentRotation() {
+  if (!state.cropper) return 0;
+  const d = state.cropper.getData(true);
+  return d && d.rotate ? d.rotate : 0;
+}
+
+function bindOutputControls() {
+  els.width.addEventListener('input', () => onDimChange('w'));
+  els.height.addEventListener('input', () => onDimChange('h'));
+  els.lockBtn.addEventListener('click', toggleAspectLock);
+  els.format.addEventListener('change', () => { updateEndpointPill(); updateConvertLabel(); });
+
+  els.presets.forEach(p => {
+    p.addEventListener('click', () => {
+      const [w, h] = p.dataset.preset.split('x').map(Number);
+      state.aspectLocked = false;
+      els.lockBtn.classList.remove('locked');
+      els.width.value = w;
+      els.height.value = h;
+      state.aspectLocked = true;
+      els.lockBtn.classList.add('locked');
+      els.presets.forEach(x => x.classList.toggle('active', x === p));
+      updateCropperAspect();
+    });
+  });
+
+  if (els.pixelBlock) {
+    els.pixelBlock.addEventListener('input', () => {
+      els.pixelPresets.forEach(p => p.classList.toggle('active', parseInt(p.dataset.pixelPreset, 10) === parseInt(els.pixelBlock.value, 10)));
+      updateEndpointPill();
+    });
+  }
+  els.pixelPresets.forEach(p => {
+    p.addEventListener('click', () => {
+      els.pixelBlock.value = p.dataset.pixelPreset;
+      els.pixelPresets.forEach(x => x.classList.toggle('active', x === p));
+      updateEndpointPill();
+    });
+  });
+  els.pixelModeRadios.forEach(r => r.addEventListener('change', updateEndpointPill));
+  els.mirrorAxisRadios.forEach(r => r.addEventListener('change', updateEndpointPill));
+}
+
+function onDimChange(which) {
+  if (!state.aspectLocked) { updateEndpointPill(); return; }
+  if (!state.loadedNaturalSize) { updateEndpointPill(); return; }
+  if (!state._linkRatio) { updateEndpointPill(); return; }
+  const r = state._linkRatio;
+  if (which === 'w') {
+    const w = parseInt(els.width.value, 10);
+    if (Number.isFinite(w) && w > 0) els.height.value = Math.max(1, Math.round(w / r));
+  } else {
+    const h = parseInt(els.height.value, 10);
+    if (Number.isFinite(h) && h > 0) els.width.value = Math.max(1, Math.round(h * r));
+  }
+  updateEndpointPill();
+}
+
+function toggleAspectLock() {
+  state.aspectLocked = !state.aspectLocked;
+  els.lockBtn.classList.toggle('locked', state.aspectLocked);
+  if (state.aspectLocked) {
+    const w = parseFloat(els.width.value) || 1;
+    const h = parseFloat(els.height.value) || 1;
+    state._linkRatio = w / h;
+  }
+}
+
+function setStatus(msg, kind) {
+  els.status.textContent = msg || '';
+  els.status.classList.remove('error', 'ok', 'loading');
+  if (kind) els.status.classList.add(kind);
+}
+
+function renderExamples() {
+  if (!els.examplesGrid) return;
+  els.examplesGrid.innerHTML = '';
+  EXAMPLES.forEach(ex => {
+    const btn = document.createElement('button');
+    btn.className = 'example';
+    btn.type = 'button';
+    btn.innerHTML = `
+      <img class="example-thumb" src="${ex.url}" alt="${ex.name}" loading="lazy" />
+      <div class="example-name">${ex.name}</div>
+      <div class="example-url">${shortUrl(ex.url)}</div>
+    `;
+    btn.addEventListener('click', () => {
+      switchTo('url');
+      els.url.value = ex.url;
+      loadFromUrl();
+      byId('converter').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    els.examplesGrid.appendChild(btn);
+  });
+}
+
+function switchTo(tab) {
+  state.source = tab;
+}
+
+function shortUrl(u) {
+  return u.replace(/^https?:\/\//, '').replace(/(.{40}).+/, '$1…');
+}
+
+async function loadFromUrl() {
+  const u = els.url.value.trim();
+  if (!u) { setStatus('Enter an image URL first.', 'error'); return; }
+  setStatus('Loading image…', 'loading');
+  try {
+    await loadImageInto(u);
+    state.loadedSource = { kind: 'url', url: u };
+    state.loadedFile = null;
+    applySourceDefaults(detectFormatFromUrl(u));
+    setStatus('');
+  } catch (e) {
+    setStatus(`Couldn't preview that image — it may be CORS-blocked. You can still convert it.`, 'error');
+    state.loadedSource = { kind: 'url', url: u };
+    state.loadedFile = null;
+    revealOutput(false);
+    applySourceDefaults(detectFormatFromUrl(u));
+  }
+}
+
+async function loadFromFile(file) {
+  if (!file.type.startsWith('image/')) {
+    setStatus('That file isn\'t an image.', 'error');
+    return;
+  }
+  setStatus('Reading file…', 'loading');
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      await loadImageInto(reader.result);
+      state.loadedSource = { kind: 'file' };
+      state.loadedFile = file;
+      applySourceDefaults(detectFormatFromFile(file));
+      setStatus('');
+    } catch (e) {
+      setStatus(e.message || 'Failed to load file.', 'error');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function detectFormatFromFile(file) {
+  const mime = (file.type || '').toLowerCase();
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/jpeg' || mime === 'image/jpg') return 'jpeg';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/gif') return 'gif';
+  if (mime === 'image/bmp' || mime === 'image/x-bmp') return 'bmp';
+  return detectFormatFromExtension(file.name);
+}
+
+function detectFormatFromUrl(url) {
+  const clean = url.split('?')[0].split('#')[0];
+  return detectFormatFromExtension(clean);
+}
+
+function detectFormatFromExtension(name) {
+  const m = (name || '').toLowerCase().match(/\.(png|jpe?g|webp|gif|bmp)$/);
+  if (!m) return null;
+  return m[1] === 'jpg' ? 'jpeg' : m[1];
+}
+
+function applySourceDefaults(detectedFormat) {
+  if (state.loadedNaturalSize) {
+    const { w, h } = state.loadedNaturalSize;
+    const cappedW = Math.min(4096, Math.max(1, w));
+    const cappedH = Math.min(4096, Math.max(1, h));
+    els.width.value = cappedW;
+    els.height.value = cappedH;
+    state._linkRatio = cappedW / cappedH;
+    els.presets.forEach(p => p.classList.remove('active'));
+  }
+  if (detectedFormat) {
+    const opt = Array.from(els.format.options).find(o => o.value === detectedFormat);
+    if (opt) els.format.value = detectedFormat;
+  }
+  updateEndpointPill();
+  updateCropperAspect();
+}
+
+function loadImageInto(src) {
+  return new Promise((resolve, reject) => {
+    if (state.cropper) { state.cropper.destroy(); state.cropper = null; }
+    const img = els.cropImage;
+    img.onload = () => {
+      state.loadedNaturalSize = { w: img.naturalWidth, h: img.naturalHeight };
+      const card = document.getElementById('converterCard');
+      if (card) card.classList.add('has-loaded-image');
+      animateReveal(els.cropBlock);
+      animateReveal(els.outputBlock);
+      state.cropper = new Cropper(img, {
+        viewMode: 1,
+        autoCropArea: 1,
+        background: false,
+        movable: true,
+        zoomable: true,
+        scalable: false,
+        rotatable: true,
+        responsive: true,
+        checkOrientation: false,
+        crop: updateCropMeta,
+      });
+      const w = parseFloat(els.width.value) || 1;
+      const h = parseFloat(els.height.value) || 1;
+      state._linkRatio = w / h;
+      updateCropperAspect();
+      resolve();
+    };
+    img.onerror = () => reject(new Error('Image failed to load.'));
+    img.crossOrigin = 'anonymous';
+    img.src = src;
+  });
+}
+
+function updateCropperAspect() {
+  if (!state.cropper) return;
+  state.cropper.setAspectRatio(NaN);
+}
+
+function updateCropMeta() {
+  if (!state.cropper) return;
+  const d = state.cropper.getData(true);
+  els.cropMeta.textContent = `${d.width}×${d.height} px @ (${d.x}, ${d.y})`;
+}
+
+function revealOutput(showCrop = true) {
+  if (showCrop) animateReveal(els.cropBlock);
+  animateReveal(els.outputBlock);
+}
+
+function endpointForTool(tool) {
+  if (tool === 'pixelate') return '/api/image/pixelate';
+  if (tool === 'invert')   return '/api/image/invert';
+  if (tool === 'mirror')   return '/api/image/mirror';
+  return '/convert-image';
+}
+
+function getPixelMode() {
+  const r = document.querySelector('input[name="pixelMode"]:checked');
+  return r ? r.value : 'simple';
+}
+
+function getMirrorAxis() {
+  const r = document.querySelector('input[name="mirrorAxis"]:checked');
+  return r ? r.value : 'h';
+}
+
+function updateEndpointPill() {
+  const ep = endpointForTool(currentTool);
+  const f = els.format.value;
+  const params = new URLSearchParams();
+  if (currentTool === 'pixelate') {
+    params.set('block', parseInt(els.pixelBlock && els.pixelBlock.value, 10) || 10);
+    params.set('mode', getPixelMode());
+    params.set('format', f === 'json' ? 'png' : f);
+  } else if (currentTool === 'invert') {
+    params.set('format', f === 'json' ? 'png' : f);
+  } else if (currentTool === 'mirror') {
+    params.set('axis', getMirrorAxis());
+    params.set('format', f === 'json' ? 'png' : f);
+  } else {
+    const w = parseInt(els.width.value, 10) || 32;
+    const h = parseInt(els.height.value, 10) || 32;
+    params.set('width', w);
+    params.set('height', h);
+    params.set('format', f);
+  }
+  els.endpointPill.textContent = `GET ${ep}?${params.toString()}`;
+}
+
+function hasCropTransform() {
+  if (!state.cropper || !state.loadedNaturalSize) return false;
+  const d = state.cropper.getData(true);
+  if (!d) return false;
+  const rot = d.rotate || 0;
+  if (rot % 360 !== 0) return true;
+  const fullW = state.loadedNaturalSize.w;
+  const fullH = state.loadedNaturalSize.h;
+  if (Math.abs(d.x) > 0.5 || Math.abs(d.y) > 0.5) return true;
+  if (Math.abs(d.width - fullW) > 0.5 || Math.abs(d.height - fullH) > 0.5) return true;
+  return false;
+}
+
+async function getTransformedBlob() {
+  if (!state.cropper) return null;
+  const canvas = state.cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
+  if (!canvas) return null;
+  return await new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png'));
+}
+
+async function convert() {
+  if (!state.loadedSource) { setStatus('Load an image first.', 'error'); return; }
+
+  const tool = currentTool;
+  const endpoint = endpointForTool(tool);
+  const format = els.format.value;
+
+  els.convert.disabled = true;
+  setStatus('Processing…', 'loading');
+  els.result.classList.add('hidden');
+
+  const params = new URLSearchParams();
+  let methodLabel = '';
+
+  if (tool === 'pixelate') {
+    const block = clampInt(els.pixelBlock && els.pixelBlock.value, 2, 128, 10);
+    const pmode = getPixelMode();
+    params.set('block', block);
+    params.set('mode', pmode);
+    params.set('format', format === 'json' ? 'png' : format);
+    methodLabel = `pixelate · ${pmode} · ${block}px`;
+  } else if (tool === 'invert') {
+    params.set('format', format === 'json' ? 'png' : format);
+    methodLabel = 'invert';
+  } else if (tool === 'mirror') {
+    const axis = getMirrorAxis();
+    params.set('axis', axis);
+    params.set('format', format === 'json' ? 'png' : format);
+    methodLabel = `mirror · ${axis}`;
+  } else {
+    const width = clampInt(els.width.value, 1, 4096, 32);
+    const height = clampInt(els.height.value, 1, 4096, 32);
+    const mode = document.querySelector('input[name="resizeMode"]:checked').value;
+    const simple = els.simple && els.simple.checked;
+    params.set('width', width);
+    params.set('height', height);
+    params.set('format', format);
+    params.set('mode', mode);
+    if (simple) params.set('simple', 'true');
+    methodLabel = mode;
+  }
+
+  let usedTransformBlob = false;
+  let transformedBlob = null;
+  if (hasCropTransform()) {
+    try {
+      transformedBlob = await getTransformedBlob();
+      if (transformedBlob) usedTransformBlob = true;
+    } catch (e) {
+      transformedBlob = null;
+    }
+  }
+
+  if (!usedTransformBlob && state.cropper && tool !== 'pixelate' && tool !== 'invert' && tool !== 'mirror') {
+    const d = state.cropper.getData(true);
+    if (d && d.width > 0 && d.height > 0 && (d.rotate || 0) % 360 === 0) {
+      params.set('crop_x', Math.max(0, Math.round(d.x)));
+      params.set('crop_y', Math.max(0, Math.round(d.y)));
+      params.set('crop_w', Math.max(1, Math.round(d.width)));
+      params.set('crop_h', Math.max(1, Math.round(d.height)));
+    }
+  }
+
+  const t0 = performance.now();
+  try {
+    let res;
+    if (usedTransformBlob && transformedBlob) {
+      const form = new FormData();
+      form.append('file', transformedBlob, 'transformed.png');
+      res = await fetch(`${endpoint}?${params.toString()}`, { method: 'POST', body: form });
+    } else if (state.loadedSource.kind === 'file' && state.loadedFile) {
+      const form = new FormData();
+      form.append('file', state.loadedFile);
+      res = await fetch(`${endpoint}?${params.toString()}`, { method: 'POST', body: form });
+    } else {
+      params.set('url', state.loadedSource.url);
+      res = await fetch(`${endpoint}?${params.toString()}`);
+    }
+
+    if (!res.ok) {
+      let msg = `HTTP ${res.status}`;
+      try { const j = await res.json(); msg = j.error || msg; } catch {}
+      throw new Error(msg);
+    }
+
+    const elapsed = Math.round(performance.now() - t0);
+    const apiOnlyTool = tool === 'pixelate' || tool === 'invert' || tool === 'mirror';
+    const outFormat = apiOnlyTool ? (format === 'json' ? 'png' : format) : format;
+
+    if (outFormat === 'json' && !apiOnlyTool) {
+      const data = await res.json();
+      renderJsonResult(data, elapsed);
+    } else {
+      const blob = await res.blob();
+      const headerFinal = parseHeaderSize(res.headers.get('X-Final-Size'));
+      const fallbackFinal = headerFinal
+        || (state.loadedNaturalSize ? [state.loadedNaturalSize.w, state.loadedNaturalSize.h] : [0, 0]);
+      const meta = {
+        original_size: parseHeaderSize(res.headers.get('X-Original-Size')),
+        final_size: fallbackFinal,
+        resize_method: res.headers.get('X-Resize-Method') || methodLabel,
+        processing_time: parseFloat(res.headers.get('X-Processing-Time')) || elapsed / 1000,
+      };
+      renderImageResult(blob, outFormat, meta, elapsed);
+    }
+    setStatus(`Done in ${elapsed}ms.`, 'ok');
+    setTimeout(() => {
+      if (els.result) els.result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 60);
+  } catch (e) {
+    setStatus(e.message || 'Conversion failed.', 'error');
+  } finally {
+    els.convert.disabled = false;
+  }
+}
+
+function parseHeaderSize(h) {
+  if (!h) return null;
+  const m = h.match(/(\d+)x(\d+)/);
+  return m ? [parseInt(m[1], 10), parseInt(m[2], 10)] : null;
+}
+
+function clampInt(v, lo, hi, fallback) {
+  const n = parseInt(v, 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(lo, Math.min(hi, n));
+}
+
+function renderImageResult(blob, format, meta, elapsedMs) {
+  const url = URL.createObjectURL(blob);
+  state.lastResult = { kind: 'image', blob, url, format, meta };
+
+  els.previewWrap.innerHTML = '';
+  const img = document.createElement('img');
+  img.className = 'preview-image';
+  img.src = url;
+  img.alt = 'Converted image';
+  els.previewWrap.appendChild(img);
+
+  fillMeta(meta, blob.size, elapsedMs);
+
+  els.resultActions.innerHTML = '';
+  addAction('DOWNLOAD', () => triggerDownload(url, `pixl-${meta.final_size[0]}x${meta.final_size[1]}.${format}`));
+  addAction('COPY URL', () => copyText(url, 'Blob URL'));
+  els.result.classList.remove('hidden');
+}
+
+function renderJsonResult(data, elapsedMs) {
+  state.lastResult = { kind: 'json', data };
+
+  els.previewWrap.innerHTML = '';
+  const [w, h] = data.final_size;
+  const grid = document.createElement('div');
+  grid.className = 'preview-grid';
+  grid.style.setProperty('--cols', w);
+  grid.style.setProperty('--ratio', `${w} / ${h}`);
+  const frag = document.createDocumentFragment();
+  for (const p of data.pixels) {
+    const d = document.createElement('div');
+    d.className = 'pixel';
+    d.style.background = `rgb(${p.R},${p.G},${p.B})`;
+    frag.appendChild(d);
+  }
+  grid.appendChild(frag);
+  els.previewWrap.appendChild(grid);
+
+  const jsonSize = new Blob([JSON.stringify(data.pixels)]).size;
+  fillMeta({
+    original_size: data.original_size,
+    final_size: data.final_size,
+    resize_method: data.resize_method,
+    processing_time: data.processing_time,
+  }, jsonSize, elapsedMs);
+
+  els.resultActions.innerHTML = '';
+  addAction('HEX', () => copyText(pixelsToHex(data.pixels), 'Hex array'));
+  addAction('JSON', () => copyText(JSON.stringify(data.pixels, null, 2), 'RGB JSON'));
+  addAction('LUA', () => copyText(pixelsToLua(data.pixels, w, h), 'Lua table'));
+  addAction('PNG', () => downloadGridAsPng(data.pixels, w, h));
+  els.result.classList.remove('hidden');
+}
+
+function fillMeta(meta, bytes, elapsedMs) {
+  els.metaSize.textContent = meta.original_size ? `${meta.original_size[0]}×${meta.original_size[1]}` : '—';
+  els.metaFinal.textContent = `${meta.final_size[0]}×${meta.final_size[1]}`;
+  els.metaMethod.textContent = meta.resize_method || '—';
+  els.metaWeight.textContent = humanBytes(bytes);
+  els.metaTime.textContent = Math.round((meta.processing_time || 0) * 1000) || elapsedMs;
+}
+
+function humanBytes(n) {
+  if (!n && n !== 0) return '—';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function addAction(label, handler) {
+  const b = document.createElement('button');
+  b.className = 'icon-btn';
+  b.type = 'button';
+  b.textContent = label;
+  b.addEventListener('click', handler);
+  els.resultActions.appendChild(b);
+}
+
+function triggerDownload(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function copyText(text, label) {
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus(`${label} copied.`, 'ok');
+  } catch {
+    setStatus(`Couldn't copy automatically.`, 'error');
+  }
+}
+
+function toHex(p) {
+  const h = n => n.toString(16).padStart(2, '0');
+  return `#${h(p.R)}${h(p.G)}${h(p.B)}`;
+}
+
+function pixelsToHex(pixels) {
+  return JSON.stringify(pixels.map(toHex));
+}
+
+function pixelsToLua(pixels, w, h) {
+  const rows = [];
+  for (let y = 0; y < h; y++) {
+    const row = [];
+    for (let x = 0; x < w; x++) {
+      const p = pixels[y * w + x];
+      row.push(`Color3.fromRGB(${p.R},${p.G},${p.B})`);
+    }
+    rows.push('  {' + row.join(', ') + '}');
+  }
+  return 'local pixels = {\n' + rows.join(',\n') + '\n}\nreturn pixels';
+}
+
+function downloadGridAsPng(pixels, w, h) {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const imgData = ctx.createImageData(w, h);
+  for (let i = 0; i < pixels.length; i++) {
+    const p = pixels[i];
+    imgData.data[i * 4] = p.R;
+    imgData.data[i * 4 + 1] = p.G;
+    imgData.data[i * 4 + 2] = p.B;
+    imgData.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(imgData, 0, 0);
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    triggerDownload(url, `pixl-${w}x${h}.png`);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+}
+
+
+(function setupFriendlyConverter() {
+  const formatGrid = document.getElementById('formatGrid');
+  const formatSelect = document.getElementById('formatSelect');
+  if (formatGrid && formatSelect) {
+    const cards = formatGrid.querySelectorAll('.format-card');
+    function syncCards(value) {
+      cards.forEach(c => {
+        const on = c.dataset.format === value;
+        c.classList.toggle('is-active', on);
+        c.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+    }
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        const v = card.dataset.format;
+        if (formatSelect.value !== v) {
+          formatSelect.value = v;
+          formatSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        syncCards(v);
+      });
+    });
+    formatSelect.addEventListener('change', () => syncCards(formatSelect.value));
+    syncCards(formatSelect.value || 'png');
+  }
+
+  const stepperItems = document.querySelectorAll('.stepper-item');
+  const cropBlock = document.getElementById('cropBlock');
+  const outputBlock = document.getElementById('outputBlock');
+  function refreshStepper() {
+    const cropVisible = cropBlock && !cropBlock.classList.contains('hidden');
+    const outputVisible = outputBlock && !outputBlock.classList.contains('hidden');
+    stepperItems.forEach(item => {
+      item.classList.remove('is-active', 'is-done');
+    });
+    if (!cropVisible && !outputVisible) {
+      stepperItems[0]?.classList.add('is-active');
+    } else if (cropVisible && !outputVisible) {
+      stepperItems[0]?.classList.add('is-done');
+      stepperItems[1]?.classList.add('is-active');
+    } else if (outputVisible) {
+      stepperItems[0]?.classList.add('is-done');
+      stepperItems[1]?.classList.add('is-done');
+      stepperItems[2]?.classList.add('is-active');
+      stepperItems[3]?.classList.add('is-active');
+      stepperItems[4]?.classList.add('is-active');
+    }
+  }
+  refreshStepper();
+  if (cropBlock) new MutationObserver(refreshStepper).observe(cropBlock, { attributes: true, attributeFilter: ['class'] });
+  if (outputBlock) new MutationObserver(refreshStepper).observe(outputBlock, { attributes: true, attributeFilter: ['class'] });
+})();
+
+
+(function setupToolRouter() {
+  const TOOLS = {
+    all: {
+      title: 'Resize, crop, and convert any image',
+      eyebrow: 'All-in-one image tool',
+      sub: 'Pick a tool on the left, or use them all in one go. Same engine, same file. No upload required twice.',
+      cardTitle: 'Converter',
+      primary: null,
+      secondary: [],
+      defaultFormat: null,
+      defaultPixel: null
+    },
+    convert: {
+      title: 'Convert your image to any format',
+      eyebrow: 'Format converter',
+      sub: 'Drop in any image and ship it as PNG, JPEG, WebP, BMP, GIF, or a raw pixel-grid JSON. Free, fast, browser-based.',
+      cardTitle: 'Convert format',
+      primary: 'format',
+      secondary: ['crop', 'size'],
+      defaultFormat: null,
+      defaultPixel: null
+    },
+    resize: {
+      title: 'Resize an image to any pixel size',
+      eyebrow: 'Image resizer',
+      sub: 'Any width, any height, up to 4096px. Lock the aspect ratio, or pick a sprite preset in one click.',
+      cardTitle: 'Resize image',
+      primary: 'size',
+      secondary: ['crop', 'format'],
+      defaultFormat: null,
+      defaultPixel: null
+    },
+    crop: {
+      title: 'Crop an image to the perfect frame',
+      eyebrow: 'Image cropper',
+      sub: 'Drag the crop box, lock to your output aspect, or fill the frame in a click. Then ship it in any format you want.',
+      cardTitle: 'Crop image',
+      primary: 'crop',
+      secondary: ['size', 'format'],
+      defaultFormat: null,
+      defaultPixel: null
+    },
+    pixelate: {
+      title: 'Pixelate any image into clean pixel art',
+      eyebrow: 'Pixel-art mode',
+      sub: 'Block-based pixelation that keeps the source size. Pick simple (nearest neighbour) or og (averaged). No shrinking.',
+      cardTitle: 'Pixelate',
+      primary: 'pixelate',
+      secondary: ['crop', 'format'],
+      defaultFormat: 'png',
+      defaultPixel: null
+    },
+    grid: {
+      title: 'Export an image as an RGB pixel grid',
+      eyebrow: 'Pixel grid JSON',
+      sub: 'Get the raw RGB grid as JSON, Lua, or hex. Pipe it straight into Roblox, a game engine, or your own renderer.',
+      cardTitle: 'Pixel grid JSON',
+      primary: 'size',
+      secondary: ['crop', 'format', 'behaviour'],
+      defaultFormat: 'json',
+      defaultPixel: null
+    },
+    invert: {
+      title: 'Invert the colors of any image',
+      eyebrow: 'Color inverter',
+      sub: 'Negate every RGB channel in one click. Transparency stays intact. Free and instant.',
+      cardTitle: 'Invert colors',
+      primary: 'invert',
+      secondary: ['crop', 'format'],
+      defaultFormat: 'png',
+      defaultPixel: null
+    },
+    mirror: {
+      title: 'Mirror or flip your image',
+      eyebrow: 'Mirror tool',
+      sub: 'Flip horizontally, vertically, or both. Same quality as the source, just reflected.',
+      cardTitle: 'Mirror image',
+      primary: 'mirror',
+      secondary: ['crop', 'format'],
+      defaultFormat: 'png',
+      defaultPixel: null
+    }
+  };
+
+  const PATH_TO_TOOL = {
+    '/converter': 'convert',
+    '/convert': 'convert',
+    '/convert-format': 'convert',
+    '/resize': 'resize',
+    '/crop': 'crop',
+    '/pixelate': 'pixelate',
+    '/pixel-art': 'pixelate',
+    '/pixel-grid': 'grid',
+    '/invert': 'invert',
+    '/invert-colors': 'invert',
+    '/mirror': 'mirror',
+    '/flip': 'mirror'
+  };
+
+  const card = document.getElementById('converterCard');
+  const heroEyebrow = document.getElementById('toolHeroEyebrow');
+  const heroTitle = document.getElementById('toolHeroTitle');
+  const heroSub = document.getElementById('toolHeroSub');
+  const cardTitle = document.getElementById('converterCardTitle');
+  const navItems = document.querySelectorAll('.tool-item');
+  const alsoBar = document.getElementById('alsoBar');
+  const alsoChips = document.getElementById('alsoChips');
+  const stepBlocks = document.querySelectorAll('.step-block[data-step-name]');
+  const simpleMode = document.getElementById('simpleMode');
+  const formatSelect = document.getElementById('formatSelect');
+  const advancedBlock = document.getElementById('advancedBlock');
+
+  const STEP_LABEL = {
+    crop: 'Crop',
+    size: 'Resize',
+    format: 'Change format',
+    behaviour: 'Fit / stretch',
+    pixelate: 'Pixelate',
+    invert: 'Invert',
+    mirror: 'Mirror'
+  };
+
+  const revealed = new Set();
+
+  function applyTool(toolName, opts) {
+    opts = opts || {};
+    const conf = TOOLS[toolName] || TOOLS.all;
+    if (typeof window !== 'undefined') window.currentTool = toolName;
+    currentTool = toolName;
+    revealed.clear();
+
+    card.dataset.tool = toolName;
+    heroEyebrow.textContent = conf.eyebrow;
+    heroTitle.textContent = conf.title;
+    heroSub.textContent = conf.sub;
+    cardTitle.textContent = conf.cardTitle;
+
+    navItems.forEach(item => {
+      const active = item.dataset.tool === toolName;
+      item.classList.toggle('is-active', active);
+      item.setAttribute('aria-current', active ? 'page' : 'false');
+    });
+
+    stepBlocks.forEach(block => {
+      const name = block.dataset.stepName;
+      block.classList.remove('is-primary', 'is-secondary', 'is-revealed');
+      if (toolName === 'all') return;
+      if (name === conf.primary) {
+        block.classList.add('is-primary');
+      } else if (conf.secondary.includes(name)) {
+        block.classList.add('is-secondary');
+      }
+    });
+
+    alsoChips.innerHTML = '';
+    if (toolName === 'all' || !conf.secondary.length) {
+      alsoBar.hidden = true;
+    } else {
+      conf.secondary.forEach(name => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'also-chip';
+        chip.dataset.also = name;
+        chip.textContent = STEP_LABEL[name] || name;
+        chip.addEventListener('click', () => toggleAlso(name, chip));
+        alsoChips.appendChild(chip);
+      });
+      alsoBar.hidden = false;
+    }
+
+    if (toolName === 'pixelate' && simpleMode && opts.respectUserToggles !== true) {
+      simpleMode.checked = true;
+      if (advancedBlock) advancedBlock.open = true;
+    }
+    if (conf.defaultFormat && formatSelect) {
+      formatSelect.value = conf.defaultFormat;
+      formatSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (typeof updateEndpointPill === 'function') updateEndpointPill();
+    if (typeof updateConvertLabel === 'function') updateConvertLabel();
+  }
+
+  function toggleAlso(name, chip) {
+    const block = document.querySelector('.step-block[data-step-name="' + name + '"]');
+    if (!block) return;
+    if (revealed.has(name)) {
+      revealed.delete(name);
+      block.classList.remove('is-revealed');
+      chip.classList.remove('is-on');
+    } else {
+      revealed.add(name);
+      block.classList.add('is-revealed');
+      chip.classList.add('is-on');
+      block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      const tool = item.dataset.tool;
+      const href = item.dataset.href;
+      applyTool(tool);
+      if (href && window.history && window.history.replaceState) {
+        try { window.history.replaceState({}, '', href); } catch (_) {}
+      }
+    });
+  });
+
+  const toolSearchInput = document.getElementById('toolSearch');
+  const toolNavEmpty = document.getElementById('toolNavEmpty');
+  if (toolSearchInput) {
+    const haystacks = Array.from(navItems).map(item => {
+      const name = item.querySelector('.tool-item-name');
+      const desc = item.querySelector('.tool-item-desc');
+      const tool = item.dataset.tool || '';
+      return (tool + ' ' + (name ? name.textContent : '') + ' ' + (desc ? desc.textContent : '')).toLowerCase();
+    });
+    const runFilter = () => {
+      const q = toolSearchInput.value.trim().toLowerCase();
+      let visible = 0;
+      navItems.forEach((item, i) => {
+        const match = !q || haystacks[i].includes(q);
+        item.classList.toggle('is-hidden', !match);
+        if (match) visible += 1;
+      });
+      if (toolNavEmpty) toolNavEmpty.hidden = visible !== 0;
+    };
+    toolSearchInput.addEventListener('input', runFilter);
+    toolSearchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        toolSearchInput.value = '';
+        runFilter();
+        toolSearchInput.blur();
+      } else if (e.key === 'Enter') {
+        const first = Array.from(navItems).find(item => !item.classList.contains('is-hidden'));
+        if (first) first.click();
+      }
+    });
+  }
+
+  const initialTool = PATH_TO_TOOL[window.location.pathname] || 'convert';
+  applyTool(initialTool);
+})();
+
+init();
+
+(function initThemeToggle() {
+  const root = document.documentElement;
+  const KEY = 'pixl-theme';
+  const btn = document.getElementById('themeToggle');
+  const saved = (() => { try { return localStorage.getItem(KEY); } catch (_) { return null; } })();
+  const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  const initial = saved || (prefersLight ? 'light' : 'dark');
+  if (initial === 'light') root.setAttribute('data-theme', 'light');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      if (next === 'light') root.setAttribute('data-theme', 'light');
+      else root.removeAttribute('data-theme');
+      try { localStorage.setItem(KEY, next); } catch (_) {}
+      btn.animate(
+        [{ transform: 'rotate(0) scale(1)' }, { transform: 'rotate(360deg) scale(1.15)' }, { transform: 'rotate(360deg) scale(1)' }],
+        { duration: 420, easing: 'cubic-bezier(.2,.7,.2,1)' }
+      );
+    });
+  }
+})();
+
+</script>
+</body>
+</html>
