@@ -406,7 +406,7 @@ def script_detail(script_id):
     <meta property="og:title" content="{script['title']} - Vadrifts">
     <meta property="og:description" content="{script['description']}">
     <meta property="og:image" content="{script['thumbnail']}">
-    <meta property="og:url" content="https://vadrifts.onrender.com/script/{script['id']}">
+    <meta property="og:url" content="https://valorium.onrender.com/script/{script['id']}">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Vadrifts">
     <meta name="twitter:card" content="summary_large_image">
@@ -739,7 +739,7 @@ def create_key():
 
     verification_tokens[token]['used'] = True
     slug = key_system.create_slug(client_ip)
-    host = request.headers.get('host', 'vadrifts.onrender.com')
+    host = request.headers.get('host', 'valorium.onrender.com')
     logger.info(f"Created key slug for IP: {client_ip}")
     return f"https://{host}/getkey/{slug}"
 
