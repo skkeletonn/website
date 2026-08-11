@@ -9,7 +9,9 @@ from urllib.parse import quote_plus
 logger = logging.getLogger(__name__)
 
 PER_USER_TIMEOUT = 8
+
 BATCH_TIMEOUT = 12
+
 MAX_WORKERS = 8
 
 
@@ -216,7 +218,8 @@ class YouTubeChannelFinder:
                 live.append(u)
 
         if live:
-            with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(live))) as pool:
+            pool = ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(live)))
+            try:
                 future_to_user = {
                     pool.submit(self._find_channel_blocking, u): u for u in live
                 }
@@ -236,7 +239,9 @@ class YouTubeChannelFinder:
                             f"YouTube lookup failed for '{user}': {e}"
                         )
                         results[user] = self._fallback(user)
+            finally:
 
-        # Preserve the original request order.
+                pool.shutdown(wait=False)
+
         channels = [results[u] for u in cleaned]
         return jsonify({'channels': channels})
