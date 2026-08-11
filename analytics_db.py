@@ -10,7 +10,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 def _get_conn():
-    return psycopg2.connect(DATABASE_URL, sslmode="require")
+    return psycopg2.connect(DATABASE_URL, sslmode="require", connect_timeout=5)
 
 
 def _init_db():
