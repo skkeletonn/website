@@ -31,7 +31,7 @@ from guild_key_system import (
     get_guild_config, save_guild_config, init_guild_config,
     create_session, get_session, update_session,
     find_session_by_ip_and_profile, get_pending_session,
-    create_guild_key, validate_guild_key, validate_guild_access,
+    create_guild_key, validate_guild_key,
     delete_guild_keys_by_user, get_guild_key_stats,
     cleanup_expired_guild_keys, get_destination_url,
     get_script_profile, get_profile_by_secret,
@@ -1171,21 +1171,6 @@ def validate_guild_key_route():
         key = request.args.get("key", "")
         hwid = request.args.get("hwid", "")
         secret = request.args.get("secret", "")
-
-    if not hwid or not secret:
-        return jsonify({"valid": False, "message": "Missing HWID or secret"})
-
-    valid, message, extra = validate_guild_access(key, hwid, secret)
-    logger.info(
-        f"Guild access ({request.method}): key={'yes' if key else 'no'} "
-        f"valid={valid} trial={extra.get('trial')} message='{message}'"
-    )
-    return jsonify({
-        "valid": valid,
-        "message": message,
-        "trial": bool(extra.get("trial")),
-        "trial_ends_at": extra.get("trial_ends_at"),
-    })
 
     if not key or not hwid or not secret:
         return jsonify({"valid": False, "message": "Missing key, HWID, or secret"})
