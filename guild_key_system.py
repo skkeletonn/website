@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 MONGODB_URI = os.environ.get("MONGODB_URI")
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
-SERVER_BASE_URL = os.environ.get("SERVER_BASE_URL", "https://vadrifts.onrender.com")
+SERVER_BASE_URL = os.environ.get("SERVER_BASE_URL", "https://valorium.onrender.com")
 
 MIN_COMPLETION_SECONDS = 25
 
@@ -20,7 +20,12 @@ script_profiles_collection = None
 
 if MONGODB_URI:
     try:
-        _client = MongoClient(MONGODB_URI)
+        _client = MongoClient(
+            MONGODB_URI,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=5000,
+            socketTimeoutMS=10000,
+        )
         _db = _client["vadrifts"]
         guild_configs_collection = _db["guild_key_configs"]
         guild_sessions_collection = _db["guild_key_sessions"]
@@ -395,43 +400,6 @@ def create_guild_key(guild_id, discord_id, discord_name, duration_hours, profile
         return None
 
 
-def list_recent_keys(guild_id, profile_id=None, limit=15):
-    """Return the most recently created (possibly active) keys for a guild.
-
-    Each entry includes the masked key, owner, script profile, expiry, and
-    whether it's currently active/HWID-locked. Used by /ks stats.
-    """
-    if guild_keys_collection is None:
-        return []
-    try:
-        query = {"guild_id": str(guild_id)}
-        if profile_id:
-            query["profile_id"] = profile_id
-        cursor = guild_keys_collection.find(query).sort("created_at", -1).limit(limit)
-        now = time.time()
-        out = []
-        profiles_cache = {}
-        for doc in cursor:
-            pid = doc.get("profile_id")
-            if pid not in profiles_cache:
-                p = get_script_profile(pid)
-                profiles_cache[pid] = p.get("name", "Unknown") if p else "Unknown"
-            key = doc.get("_id", "")
-            out.append({
-                "key_masked": (key[:6] + "…" + key[-4:]) if len(key) > 12 else "••••",
-                "owner": doc.get("discord_name", "unknown"),
-                "owner_id": doc.get("discord_id", ""),
-                "script": profiles_cache.get(pid, "Unknown"),
-                "active": now < doc.get("expires_at", 0),
-                "hwid_locked": bool(doc.get("hwid")),
-                "expires_at": doc.get("expires_at", 0),
-            })
-        return out
-    except Exception as e:
-        logger.error(f"Failed to list keys: {e}")
-        return []
-
-
 def validate_guild_key(key, hwid, api_secret):
     if guild_keys_collection is None:
         return False, "Key system unavailable"
@@ -458,17 +426,7 @@ def validate_guild_key(key, hwid, api_secret):
             logger.warning(f"Guild key validation: guild mismatch")
             return False, "Invalid key"
 
-        # If the whole key system or this specific script is disabled, reject
-        # all keys (existing scripts stop working until re-enabled).
-        if not profile.get("enabled", True):
-            return False, "This script's key system is currently disabled."
-        config = get_guild_config(guild_id)
-        if not config or not config.get("enabled", True):
-            return False, "The key system is currently disabled for this server."
-
-        expires_at = key_doc.get("expires_at", 0)
-        # duration 0 / far-future = non-expiring key.
-        if expires_at and expires_at < time.time() + (365 * 24 * 3600) and time.time() > expires_at:
+        if time.time() > key_doc.get("expires_at", 0):
             guild_keys_collection.delete_one({"_id": key})
             return False, "Key expired. Get a new one from Discord."
 
