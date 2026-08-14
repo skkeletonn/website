@@ -10,6 +10,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, send_file, redirect, send_from_directory, make_response, render_template
 from datetime import datetime, timedelta
 from collections import defaultdict
+from urllib.parse import urlparse
 
 from config import *
 from discord_keys_db import load_discord_keys, save_discord_keys
@@ -36,6 +37,15 @@ from guild_key_system import (
     cleanup_expired_guild_keys, get_destination_url,
     get_script_profile, get_profile_by_secret,
     SERVER_BASE_URL, MIN_COMPLETION_SECONDS
+)
+from guild_renewal_system import (
+    CHECKPOINT_COUNT,
+    complete_renewal_checkpoint,
+    format_renewal_timestamp,
+    get_renewal_entitlement,
+    get_renewal_session,
+    get_renewal_status,
+    start_renewal_checkpoint,
 )
 
 logging.basicConfig(
@@ -940,9 +950,127 @@ def showcasers():
     return resp
 
 
+def _valid_lootlabs_referrer(referer):
+    if not referer:
+        return True  # Some mobile/privacy browsers intentionally omit Referer.
+    try:
+        host = (urlparse(referer).hostname or "").lower().rstrip(".")
+    except ValueError:
+        return False
+    allowed = ("lootlabs.gg", "lootdest.org", "loot-link.com")
+    return any(host == domain or host.endswith("." + domain) for domain in allowed)
+
+
+def _render_renewal_page(session_token, error=None, status_code=200):
+    renewal_session = get_renewal_session(session_token)
+    if not renewal_session:
+        response = make_response(
+            render_template(
+                "guild-renewal.html",
+                expired=True,
+                error=error,
+                checkpoint_count=CHECKPOINT_COUNT,
+            ),
+            403,
+        )
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    entitlement = get_renewal_entitlement(renewal_session["guild_id"]) or {}
+    access = get_renewal_status(renewal_session["guild_id"])
+    timezone_name = entitlement.get("timezone", "UTC")
+    due_text = format_renewal_timestamp(entitlement.get("due_at"), timezone_name)
+    grace_text = format_renewal_timestamp(
+        entitlement.get("grace_ends_at"), timezone_name
+    )
+    response = make_response(
+        render_template(
+            "guild-renewal.html",
+            expired=False,
+            error=error,
+            notice=(
+                "Checkpoint recorded. Continue with the next checkpoint."
+                if request.args.get("step") == "complete" and not renewal_session.get("completed")
+                else None
+            ),
+            guild_name=entitlement.get("guild_name", "Discord server"),
+            session_token=session_token,
+            completed_steps=renewal_session.get("completed_steps", []),
+            current_step=int(renewal_session.get("current_step", 1)),
+            checkpoint_count=CHECKPOINT_COUNT,
+            session_completed=bool(renewal_session.get("completed")),
+            access_state=access.get("state", "active"),
+            due_text=due_text,
+            grace_text=grace_text,
+        ),
+        status_code,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
+
+
+@app.route('/ks/renew/<session_token>')
+def ks_renewal_page(session_token):
+    return _render_renewal_page(session_token)
+
+
+@app.route('/ks/renew/<session_token>/checkpoint')
+def ks_renewal_checkpoint(session_token):
+    try:
+        loot_url, step = start_renewal_checkpoint(
+            session_token,
+            get_client_ip(),
+            base_url=SERVER_BASE_URL,
+        )
+        logger.info("Guild renewal checkpoint started: step=%s", step)
+        return redirect(loot_url)
+    except ValueError as exc:
+        return _render_renewal_page(session_token, str(exc), 403)
+    except Exception as exc:
+        logger.exception("Could not start guild renewal checkpoint")
+        return _render_renewal_page(
+            session_token,
+            str(exc) if str(exc) else "Could not start this checkpoint. Try again shortly.",
+            503,
+        )
+
+
+@app.route('/ks/renew/complete/<session_token>/<int:step>/<completion_token>')
+def ks_renewal_checkpoint_complete(session_token, step, completion_token):
+    referer = request.headers.get("Referer", "")
+    if not _valid_lootlabs_referrer(referer):
+        logger.warning("Rejected renewal completion with referrer %r", referer)
+        return _render_renewal_page(
+            session_token,
+            "Return through the LootLabs checkpoint instead of opening the completion URL directly.",
+            403,
+        )
+    try:
+        result = complete_renewal_checkpoint(
+            session_token,
+            step,
+            completion_token,
+            get_client_ip(),
+        )
+    except ValueError as exc:
+        return _render_renewal_page(session_token, str(exc), 403)
+    except Exception:
+        logger.exception("Could not complete guild renewal checkpoint")
+        return _render_renewal_page(
+            session_token,
+            "The checkpoint could not be saved. Reload and try again.",
+            503,
+        )
+
+    if result.get("completed"):
+        return redirect(f"/ks/renew/{session_token}?renewed=1")
+    return redirect(f"/ks/renew/{session_token}?step=complete")
+
+
 def _render_result(icon, title, message, page_class="success", page_title="Key System"):
     try:
-        with open('templates/keysystem-result.html', 'r', encoding='utf-8') as f:
+        with open('templates/keysystem_result.html', 'r', encoding='utf-8') as f:
             html = f.read()
         html = html.replace('{{ICON}}', icon)
         html = html.replace('{{TITLE}}', title)
@@ -951,7 +1079,23 @@ def _render_result(icon, title, message, page_class="success", page_title="Key S
         html = html.replace('{{PAGE_TITLE}}', page_title)
         return html
     except FileNotFoundError:
-        return f"<h1>{title}</h1><p>{message}</p>", 500
+        return f"<h1>{title}</h1><p>{message}</p>"
+
+
+def _renewal_denied_response(guild_id):
+    status = get_renewal_status(guild_id)
+    if status.get("allows_access", False):
+        return None
+    if status.get("state") == "unavailable":
+        message = "Sponsored access could not be checked. Please try again shortly."
+    else:
+        message = (
+            "This server's sponsored access expired. Existing keys remain stored, "
+            "but a server admin must complete all four renewal checkpoints from /ks setup."
+        )
+    return _render_result(
+        '⛔', 'Server Renewal Required', message, 'error', 'Renewal Required'
+    ), 403
 
 
 @app.route('/ks/gateway/<session_token>')
@@ -963,6 +1107,10 @@ def ks_gateway(session_token):
             'This session has expired or does not exist. Run the key command again in Discord.',
             'error', 'Session Expired'
         ), 403
+
+    renewal_denied = _renewal_denied_response(session['guild_id'])
+    if renewal_denied:
+        return renewal_denied
 
     profile = get_script_profile(session['profile_id'])
     if not profile or not profile.get('enabled'):
@@ -984,7 +1132,7 @@ def ks_gateway(session_token):
     update_session(session_token, {"ip": client_ip})
 
     try:
-        with open('templates/keysystem-gateway.html', 'r', encoding='utf-8') as f:
+        with open('templates/keysystem_gateaway.html', 'r', encoding='utf-8') as f:
             html = f.read()
     except FileNotFoundError:
         return "Gateway template not found", 500
@@ -1009,6 +1157,12 @@ def ks_timer(session_token):
     session = get_session(session_token)
     if not session:
         return jsonify({"success": False, "error": "Invalid session"})
+    renewal = get_renewal_status(session['guild_id'])
+    if not renewal.get("allows_access", False):
+        return jsonify({
+            "success": False,
+            "error": "Server sponsored access expired; ask an admin to renew it."
+        }), 403
 
     client_ip = get_client_ip()
 
@@ -1035,6 +1189,10 @@ def ks_redirect(session_token, provider):
             'Session expired. Run the key command again in Discord.',
             'error'
         ), 403
+
+    renewal_denied = _renewal_denied_response(session['guild_id'])
+    if renewal_denied:
+        return renewal_denied
 
     if not session.get('timer_started'):
         return _render_result(
@@ -1068,6 +1226,10 @@ def ks_redirect(session_token, provider):
 
 @app.route('/ks/done/<guild_id>/<profile_id>')
 def ks_done(guild_id, profile_id):
+    renewal_denied = _renewal_denied_response(guild_id)
+    if renewal_denied:
+        return renewal_denied
+
     guild_config = get_guild_config(guild_id)
     if not guild_config or not guild_config.get('enabled'):
         return _render_result(
@@ -1151,11 +1313,14 @@ def ks_status(session_token):
     session = get_session(session_token)
     if not session:
         return jsonify({"exists": False, "completed": False})
+    renewal = get_renewal_status(session['guild_id'])
     return jsonify({
         "exists": True,
         "completed": session.get("completed", False),
         "key_claimed": session.get("key_claimed", False),
-        "timer_started": session.get("timer_started", False)
+        "timer_started": session.get("timer_started", False),
+        "sponsored_access": renewal.get("state"),
+        "access_allowed": renewal.get("allows_access", False),
     })
 
 @app.route('/api/validate-guild-key', methods=['POST', 'GET'])
