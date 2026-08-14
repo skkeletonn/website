@@ -5,3 +5,4 @@ discord.py
 pymongo
 redis
 psycopg2-binary
+tzdata
