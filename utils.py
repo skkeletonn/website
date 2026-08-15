@@ -5,7 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
+SITE_URL = os.environ.get("SITE_URL", "https://valorium.onrender.com").rstrip("/")
 
 
 def inject_meta_tags(html_content, meta_tags):
