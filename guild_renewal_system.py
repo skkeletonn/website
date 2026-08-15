@@ -35,11 +35,42 @@ SERVER_BASE_URL = os.environ.get(
 ).rstrip("/")
 
 RENEWAL_PERIOD_DAYS = 3
-GRACE_PERIOD_SECONDS = 30 * 60
+
+
+def _nonnegative_int_env(name, default=0):
+    raw = (os.environ.get(name) or str(default)).strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("Ignoring invalid %s=%r; expected a whole number", name, raw)
+        return default
+    return max(0, value)
+
+
+# Optional operator-only timing override for staging/smoke tests. Leaving these
+# unset preserves the production three-local-day cycle and 30-minute grace.
+RENEWAL_TEST_CYCLE_MINUTES = _nonnegative_int_env(
+    "RENEWAL_TEST_CYCLE_MINUTES"
+)
+RENEWAL_TEST_GRACE_MINUTES = _nonnegative_int_env(
+    "RENEWAL_TEST_GRACE_MINUTES"
+)
+GRACE_PERIOD_SECONDS = (
+    RENEWAL_TEST_GRACE_MINUTES * 60
+    if RENEWAL_TEST_CYCLE_MINUTES and RENEWAL_TEST_GRACE_MINUTES
+    else 30 * 60
+)
 CHECKPOINT_COUNT = 4
 RENEWAL_OPEN_SECONDS = 24 * 60 * 60
 RENEWAL_SESSION_SECONDS = 6 * 60 * 60
 MIN_CHECKPOINT_SECONDS = int(os.environ.get("RENEWAL_MIN_CHECKPOINT_SECONDS", "25"))
+
+if RENEWAL_TEST_CYCLE_MINUTES:
+    logger.warning(
+        "RENEWAL TEST TIMING ENABLED: cycle=%sm grace=%sm; remove the test variables before production",
+        RENEWAL_TEST_CYCLE_MINUTES,
+        GRACE_PERIOD_SECONDS // 60,
+    )
 
 LOOTLABS_API_URL = "https://creators.lootlabs.gg/api/public/content_locker"
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -98,7 +129,7 @@ def validate_renewal_settings(email, timezone_name, local_time):
         ZoneInfo(timezone_name)
     except (ZoneInfoNotFoundError, ValueError):
         raise ValueError(
-            "Enter a valid IANA timezone, for example Europe/Sarajevo or America/New_York."
+            "Enter a valid IANA timezone, for example UTC or America/New_York."
         )
     return email, timezone_name, local_time
 
@@ -128,9 +159,21 @@ def _local_wall_timestamp(local_date, timezone_name, local_time):
     return timestamp
 
 
+def renewal_schedule_description():
+    if RENEWAL_TEST_CYCLE_MINUTES:
+        return (
+            f"{RENEWAL_TEST_CYCLE_MINUTES}-minute test cycle with a "
+            f"{GRACE_PERIOD_SECONDS // 60}-minute grace period"
+        )
+    return "three-local-calendar-day cycle with a 30-minute grace period"
+
+
 def compute_first_due(now, timezone_name, local_time):
-    """First due date: configured wall time three local-calendar days ahead."""
-    local_now = datetime.fromtimestamp(float(now), ZoneInfo(timezone_name))
+    """First due date: production local-calendar timing or an explicit test offset."""
+    now = float(now)
+    if RENEWAL_TEST_CYCLE_MINUTES:
+        return now + RENEWAL_TEST_CYCLE_MINUTES * 60
+    local_now = datetime.fromtimestamp(now, ZoneInfo(timezone_name))
     target_date = local_now.date() + timedelta(days=RENEWAL_PERIOD_DAYS)
     return _local_wall_timestamp(target_date, timezone_name, local_time)
 
@@ -144,8 +187,12 @@ def compute_renewed_due(entitlement, now):
     grace_ends_at = float(
         entitlement.get("grace_ends_at", due_at + GRACE_PERIOD_SECONDS)
     )
-    tz = ZoneInfo(timezone_name)
 
+    if RENEWAL_TEST_CYCLE_MINUTES:
+        anchor = due_at if now < grace_ends_at else now
+        return anchor + RENEWAL_TEST_CYCLE_MINUTES * 60
+
+    tz = ZoneInfo(timezone_name)
     if now < grace_ends_at:
         anchor_date = datetime.fromtimestamp(due_at, tz).date()
     else:
@@ -198,7 +245,10 @@ def derive_renewal_status(entitlement, now=None):
     if state == "active":
         result["message"] = "Sponsored access is active."
     elif state == "grace":
-        result["message"] = "Sponsored access is in its 30-minute grace period."
+        grace_minutes = GRACE_PERIOD_SECONDS // 60
+        result["message"] = (
+            f"Sponsored access is in its {grace_minutes}-minute grace period."
+        )
     else:
         result["message"] = (
             "Sponsored access expired. A server admin must complete the four renewal checkpoints."
@@ -246,7 +296,7 @@ def configure_renewal(
     local_time,
     now=None,
 ):
-    """Enable/update renewal settings without resetting an existing due date."""
+    """Enable/update settings; only explicit test-mode transitions reset the due date."""
     if renewal_entitlements_collection is None:
         raise RuntimeError("Renewal database is unavailable.")
     email, timezone_name, local_time = validate_renewal_settings(
@@ -256,14 +306,24 @@ def configure_renewal(
     guild_id = str(guild_id)
     existing = renewal_entitlements_collection.find_one({"_id": guild_id})
 
-    if existing and existing.get("due_at"):
+    test_cycle_enabled = bool(RENEWAL_TEST_CYCLE_MINUTES)
+    existing_was_test = bool(existing and existing.get("timing_mode") == "test")
+    preserve_due = bool(
+        existing
+        and existing.get("due_at")
+        and not test_cycle_enabled
+        and not existing_was_test
+    )
+    if preserve_due:
         due_at = float(existing["due_at"])
         cycle = int(existing.get("cycle", 1))
         created_at = float(existing.get("created_at", now))
     else:
+        # Entering or leaving explicit test timing resets the due date when the
+        # Discord form is saved, so no MongoDB console access is required.
         due_at = compute_first_due(now, timezone_name, local_time)
-        cycle = 1
-        created_at = now
+        cycle = int(existing.get("cycle", 1)) if existing else 1
+        created_at = float(existing.get("created_at", now)) if existing else now
 
     document = {
         "guild_id": guild_id,
@@ -272,6 +332,7 @@ def configure_renewal(
         "email": email,
         "timezone": timezone_name,
         "local_time": local_time,
+        "timing_mode": "test" if test_cycle_enabled else "production",
         "due_at": due_at,
         "grace_ends_at": due_at + GRACE_PERIOD_SECONDS,
         "cycle": cycle,
@@ -708,7 +769,9 @@ def process_due_email_reminders(now=None):
         labels = {
             "one_day": "Renewal is due within 24 hours",
             "one_hour": "Renewal is due within one hour",
-            "grace": "Renewal is now in the 30-minute grace period",
+            "grace": (
+                f"Renewal is now in the {GRACE_PERIOD_SECONDS // 60}-minute grace period"
+            ),
             "blocked": "Sponsored access is blocked until renewal",
         }
         subject = f"[{entitlement.get('guild_name', 'Discord server')}] {labels[event]}"
