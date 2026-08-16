@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Sponsored renewal{% if guild_name %} · {{ guild_name }}{% endif %}</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090b12;
+      --panel: #121622;
+      --panel-2: #181d2c;
+      --text: #f6f7fb;
+      --muted: #aab1c3;
+      --line: #293044;
+      --accent: #8b5cf6;
+      --accent-2: #6d3ee8;
+      --good: #42d392;
+      --warn: #f7c948;
+      --bad: #fb7185;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(139, 92, 246, .20), transparent 34rem),
+        radial-gradient(circle at 90% 90%, rgba(66, 211, 146, .09), transparent 32rem),
+        var(--bg);
+      color: var(--text);
+    }
+    main { width: min(760px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 64px; }
+    .eyebrow { color: #c4b5fd; font-size: .78rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 10px 0 8px; font-size: clamp(2rem, 7vw, 3.3rem); line-height: 1.05; letter-spacing: -.04em; }
+    .lead { margin: 0 0 28px; color: var(--muted); font-size: 1.05rem; line-height: 1.65; }
+    .card { background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--line); border-radius: 22px; padding: 24px; box-shadow: 0 24px 80px rgba(0,0,0,.28); }
+    .alert { margin-bottom: 18px; border-radius: 14px; padding: 14px 16px; line-height: 1.45; }
+    .alert.error { color: #fecdd3; background: rgba(251, 113, 133, .10); border: 1px solid rgba(251, 113, 133, .30); }
+    .alert.notice { color: #bbf7d0; background: rgba(66, 211, 146, .10); border: 1px solid rgba(66, 211, 146, .28); }
+    .summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .summary > div { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+    .summary span { display: block; color: var(--muted); font-size: .76rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 5px; }
+    .summary strong { font-size: .94rem; overflow-wrap: anywhere; }
+    .steps { display: grid; gap: 12px; margin: 4px 0 26px; padding: 0; list-style: none; }
+    .step { display: flex; align-items: center; gap: 14px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 15px; padding: 14px; }
+    .step .number { display: grid; place-items: center; flex: 0 0 36px; height: 36px; border-radius: 50%; background: #252b3e; color: var(--muted); font-weight: 850; }
+    .step .copy { min-width: 0; }
+    .step .copy strong { display: block; margin-bottom: 2px; }
+    .step .copy small { color: var(--muted); }
+    .step.done { border-color: rgba(66, 211, 146, .35); }
+    .step.done .number { color: #062d1d; background: var(--good); }
+    .step.current { border-color: rgba(139, 92, 246, .68); box-shadow: 0 0 0 3px rgba(139, 92, 246, .10); }
+    .step.current .number { color: white; background: var(--accent); }
+    .button { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; padding: 0 22px; border-radius: 14px; color: white; background: linear-gradient(135deg, var(--accent), var(--accent-2)); text-decoration: none; font-weight: 850; box-shadow: 0 12px 32px rgba(109, 62, 232, .26); }
+    .button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .complete { text-align: center; padding: 12px 4px 4px; }
+    .complete .icon { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%; color: #062d1d; background: var(--good); font-size: 1.9rem; font-weight: 900; }
+    .complete h2 { margin: 0 0 8px; font-size: 1.65rem; }
+    .complete p, .fineprint { color: var(--muted); line-height: 1.55; }
+    .fineprint { margin: 18px 0 0; font-size: .83rem; text-align: center; }
+    .expired { text-align: center; padding: 28px 8px; }
+    .expired h1 { font-size: 2rem; }
+    @media (max-width: 560px) { main { padding-top: 28px; } .card { padding: 18px; border-radius: 18px; } .summary { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  {% if expired %}
+    <section class="card expired">
+      <div class="eyebrow">Private renewal session</div>
+      <h1>Session expired</h1>
+      <p class="lead">Return to Discord, run <strong>/ks setup</strong>, open <strong>Sponsored Renewal</strong>, and create a new session.</p>
+      {% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+    </section>
+  {% else %}
+    <div class="eyebrow">Four-step sponsored access</div>
+    <h1>{{ guild_name }}</h1>
+    <p class="lead">Complete each one-task LootLabs checkpoint in order. Closing this page is safe; use the same private Discord link to continue.</p>
+
+    {% if error %}<div class="alert error"><strong>Checkpoint not recorded.</strong><br>{{ error }}</div>{% endif %}
+    {% if notice %}<div class="alert notice">{{ notice }}</div>{% endif %}
+
+    <section class="card">
+      <div class="summary">
+        <div><span>Current access</span><strong>{{ access_state|capitalize }}</strong></div>
+        <div><span>Progress</span><strong>{{ completed_steps|length }} of {{ checkpoint_count }} checkpoints</strong></div>
+        <div><span>Current due time</span><strong>{{ due_text }}</strong></div>
+        <div><span>Grace ends</span><strong>{{ grace_text }}</strong></div>
+      </div>
+
+      <ol class="steps" aria-label="Renewal checkpoints">
+        {% for number in range(1, checkpoint_count + 1) %}
+          {% if number in completed_steps %}
+            {% set step_class = 'done' %}
+          {% elif number == current_step and not session_completed %}
+            {% set step_class = 'current' %}
+          {% else %}
+            {% set step_class = '' %}
+          {% endif %}
+          <li class="step {{ step_class }}">
+            <span class="number">{% if number in completed_steps %}✓{% else %}{{ number }}{% endif %}</span>
+            <span class="copy">
+              <strong>Checkpoint {{ number }}</strong>
+              <small>{% if number in completed_steps %}Completed{% elif number == current_step and not session_completed %}Ready now{% else %}Locked until the previous checkpoint{% endif %}</small>
+            </span>
+          </li>
+        {% endfor %}
+      </ol>
+
+      {% if session_completed %}
+        <div class="complete">
+          <div class="icon">✓</div>
+          <h2>Sponsored access renewed</h2>
+          <p>The next due time is <strong>{{ due_text }}</strong>. Existing customer keys can be used again immediately.</p>
+        </div>
+      {% else %}
+        <a class="button" href="/ks/renew/{{ session_token }}/checkpoint">Open checkpoint {{ current_step }} of {{ checkpoint_count }}</a>
+        <p class="fineprint">Use one browser and connection for the whole session. A checkpoint must be completed through its generated LootLabs link.</p>
+      {% endif %}
+    </section>
+  {% endif %}
+</main>
+</body>
+</html>
