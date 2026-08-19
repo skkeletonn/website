@@ -1323,12 +1323,32 @@ def ks_status(session_token):
         "access_allowed": renewal.get("allows_access", False),
     })
 
+def _guild_validation_code(valid, message):
+    """Stable client-facing code; human-readable messages may evolve freely."""
+    if valid:
+        return "authenticated"
+    return {
+        "Key system unavailable": "service_unavailable",
+        "Invalid API secret": "invalid_configuration",
+        "Server sponsored access expired. Ask an admin to renew it in Discord.": "sponsored_renewal_required",
+        "Invalid key": "invalid_key",
+        "Key expired. Get a new one from Discord.": "key_expired",
+        "Key locked to another device.": "hwid_mismatch",
+        "You must be in the Discord server.": "membership_required",
+        "Validation error": "service_unavailable",
+    }.get(message, "validation_failed")
+
+
 @app.route('/api/validate-guild-key', methods=['POST', 'GET'])
 def validate_guild_key_route():
     if request.method == 'POST':
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
-            return jsonify({"valid": False, "message": "No data provided"})
+            return jsonify({
+                "valid": False,
+                "code": "invalid_request",
+                "message": "No data provided",
+            })
         key = data.get("key", "")
         hwid = data.get("hwid", "")
         secret = data.get("secret", "")
@@ -1338,11 +1358,23 @@ def validate_guild_key_route():
         secret = request.args.get("secret", "")
 
     if not key or not hwid or not secret:
-        return jsonify({"valid": False, "message": "Missing key, HWID, or secret"})
+        return jsonify({
+            "valid": False,
+            "code": "invalid_request",
+            "message": "Missing key, HWID, or secret",
+        })
 
     valid, message = validate_guild_key(key, hwid, secret)
-    logger.info(f"Guild key validation ({request.method}): key='{key[:8]}...' valid={valid} message='{message}'")
-    return jsonify({"valid": valid, "message": message})
+    code = _guild_validation_code(valid, message)
+    logger.info(
+        "Guild key validation (%s): key='%s...' valid=%s code='%s' message='%s'",
+        request.method,
+        key[:8],
+        valid,
+        code,
+        message,
+    )
+    return jsonify({"valid": valid, "code": code, "message": message})
 
 SUGGESTION_WEBHOOK_URL = os.environ.get("SUGGESTION_WEBHOOK_URL")
 SUGGESTION_MIN_LENGTH = 8
