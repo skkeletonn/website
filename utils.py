@@ -5,7 +5,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-SITE_URL = os.environ.get("SITE_URL", "https://valorium.onrender.com").rstrip("/")
+SITE_URLS = [
+    os.environ.get("SITE_URL", "https://valorium.onrender.com").rstrip("/"),
+    os.environ.get("SITE_URL_2", "https://vadrifts.onrender.com").rstrip("/"),
+]
 
 
 def inject_meta_tags(html_content, meta_tags):
@@ -15,16 +18,17 @@ def inject_meta_tags(html_content, meta_tags):
 
 
 def server_pinger():
-    """Keep the Render free instance awake by hitting its own /health endpoint.
-
-    Note: Render free instances can still be forced to sleep regardless of
-    pings; this just reduces cold starts. Previously this pinged the WRONG
-    host (valorium.onrender.com), so it did nothing for this service.
-    """
-    health_url = f"{SITE_URL}/health"
+    """Ping both servers' /health endpoints every 5 minutes."""
     while True:
-        try:
-            requests.get(health_url, timeout=10)
-        except Exception as e:
-            logger.debug(f"Self-ping failed: {e}")
+        for site_url in SITE_URLS:
+            health_url = f"{site_url}/health"
+
+            try:
+                response = requests.get(health_url, timeout=10)
+                logger.debug(
+                    f"Pinged {health_url} — status {response.status_code}"
+                )
+            except Exception as e:
+                logger.debug(f"Ping failed for {health_url}: {e}")
+
         time.sleep(300)
