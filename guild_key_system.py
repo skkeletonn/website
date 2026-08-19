@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 MONGODB_URI = os.environ.get("MONGODB_URI")
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
-SERVER_BASE_URL = os.environ.get("SERVER_BASE_URL", "https://valorium.onrender.com")
+SERVER_BASE_URL = os.environ.get("SERVER_BASE_URL", "https://vadrifts.onrender.com")
 
 MIN_COMPLETION_SECONDS = 25
 
@@ -424,7 +424,7 @@ def validate_guild_key(key, hwid, api_secret):
 
         renewal = get_renewal_status(guild_id)
         if not renewal.get("allows_access", False):
-            return False, "Server sponsored access expired. Ask an admin to renew it in Discord."
+            return False, "This server's service access expired. Ask an admin to renew it in Discord."
 
         key_doc = guild_keys_collection.find_one({"_id": key})
         if not key_doc:
