@@ -10,283 +10,260 @@
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700;800&display=swap');
 
     :root {
-      --bg: #100c07;
-      --bg-2: #17110a;
-      --surface: rgba(28, 20, 10, 0.86);
-      --surface-2: #22180d;
-      --text: #f6edd8;
-      --muted: #b39a6d;
-      --muted-2: #8a734c;
-      --line: rgba(245, 193, 74, 0.16);
-      --line-strong: rgba(245, 193, 74, 0.38);
-      --amber: #f5c14a;
-      --amber-2: #e8a317;
-      --amber-deep: #9a6a10;
-      --amber-glow: rgba(245, 193, 74, 0.28);
-      --good: #86efac;
-      --bad: #fb7185;
-      --radius: 16px;
-      --sans: 'Inter', system-ui, sans-serif;
-      --mono: 'IBM Plex Mono', ui-monospace, monospace;
+      --bg: #07090f;
+      --bg-2: #0b1220;
+      --surface: #0f172a;
+      --surface-2: #111c33;
+      --border: #1f2a44;
+      --border-strong: #2a3a5f;
+      --text: #e6edf7;
+      --muted: #8aa0bf;
+      --muted-2: #6b7e9c;
+      --amber: #eab308;
+      --amber-2: #facc15;
+      --amber-dim: #a16207;
+      --amber-glow: rgba(234, 179, 8, .32);
+      --good: #4ade80;
+      --danger: #fb7185;
+      --radius: 14px;
+      --radius-lg: 20px;
+      --shadow-1: 0 1px 0 rgba(255,255,255,.04) inset, 0 10px 30px rgba(0,0,0,.45);
+      --shadow-amber: 0 10px 40px -10px rgba(234,179,8,.45);
+      --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      --sans: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     }
 
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
-    body {
-      min-height: 100vh;
+    html, body {
+      background: var(--bg);
       color: var(--text);
       font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      min-height: 100vh;
       background:
-        radial-gradient(900px 420px at 50% -140px, rgba(245, 193, 74, 0.16), transparent 70%),
-        repeating-linear-gradient(
-          -18deg,
-          transparent,
-          transparent 22px,
-          rgba(245, 193, 74, 0.015) 22px,
-          rgba(245, 193, 74, 0.015) 23px
-        ),
-        linear-gradient(180deg, var(--bg) 0%, #0a0805 100%);
+        radial-gradient(1000px 600px at 50% -200px, rgba(234,179,8,.10), transparent 70%),
+        linear-gradient(180deg, #07090f 0%, #050810 100%);
     }
+    h1, h2 { letter-spacing: -.02em; margin: 0; }
 
-    main {
-      width: min(680px, calc(100% - 32px));
+    .page {
+      padding: 140px 20px 80px;
+      max-width: 980px;
       margin: 0 auto;
-      padding: 48px 0 72px;
-      animation: rise .7s cubic-bezier(.2,.7,.2,1);
-    }
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(18px); }
-      to { opacity: 1; transform: none; }
     }
 
-    .ticket {
-      display: flex;
+    .hero {
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto 28px;
+    }
+    .badge {
+      display: inline-flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, .6);
+      color: var(--muted);
+      font-size: 13px;
+      font-family: var(--mono);
       margin-bottom: 18px;
     }
-    .eyebrow {
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: .16em;
-      text-transform: uppercase;
-      color: var(--amber);
+    .badge-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--amber-2);
+      box-shadow: 0 0 0 4px rgba(234,179,8,.15);
     }
-    .chip {
-      font-family: var(--mono);
-      font-size: 11px;
-      color: #3a2a10;
-      background: var(--amber);
-      padding: 4px 9px;
-      border-radius: 999px;
-      font-weight: 600;
+    .badge.blocked .badge-dot { background: var(--danger); box-shadow: 0 0 0 4px rgba(251,113,133,.16); }
+    .badge.active .badge-dot { background: var(--good); box-shadow: 0 0 0 4px rgba(74,222,128,.16); }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      line-height: 1.08;
+      margin-bottom: 12px;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
     }
 
-    h1 {
-      margin: 0 0 8px;
-      font-size: clamp(1.85rem, 5vw, 2.55rem);
-      letter-spacing: -.04em;
-      line-height: 1.08;
+    .alert {
+      max-width: 860px;
+      margin: 0 auto 16px;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      line-height: 1.55;
     }
-    .lead {
-      margin: 0 0 22px;
-      color: var(--muted);
-      line-height: 1.65;
-      max-width: 42rem;
+    .alert strong { display: block; margin-bottom: 4px; }
+    .alert.error {
+      color: #fecdd3;
+      background: rgba(251,113,133,.08);
+      border: 1px solid rgba(251,113,133,.28);
+    }
+    .alert.notice {
+      color: #bbf7d0;
+      background: rgba(74,222,128,.08);
+      border: 1px solid rgba(74,222,128,.22);
     }
 
     .card {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 18px 40px rgba(0,0,0,.35);
-      overflow: hidden;
-    }
-    .card-bar {
-      height: 6px;
-      background: linear-gradient(90deg, var(--amber-2), var(--amber), #ffe08a);
-    }
-    .card-body { padding: 22px; }
-
-    .alert {
-      margin-bottom: 14px;
-      border-radius: 12px;
-      padding: 12px 14px;
-      line-height: 1.5;
-      font-size: .94rem;
-    }
-    .alert.error {
-      color: #fecdd3;
-      background: rgba(251, 113, 133, .08);
-      border: 1px solid rgba(251, 113, 133, .28);
-    }
-    .alert.notice {
-      color: #d9f99d;
-      background: rgba(132, 204, 22, .08);
-      border: 1px solid rgba(163, 230, 53, .22);
+      background:
+        radial-gradient(circle at 1px 1px, rgba(234,179,8,.05) 1px, transparent 1.4px),
+        radial-gradient(900px 480px at 0% 0%, rgba(234,179,8,.06), transparent 60%),
+        linear-gradient(180deg, var(--surface), var(--bg-2));
+      background-size: 22px 22px, auto, auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-1);
+      padding: clamp(20px, 3vw, 32px) clamp(20px, 3.5vw, 36px);
     }
 
-    .summary {
+    .meta {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 20px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
     }
-    .summary > div {
-      background: var(--surface-2);
-      border: 1px solid var(--line);
+    .meta > div {
+      background: rgba(7,9,15,.45);
+      border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 12px 13px;
+      padding: 14px 14px 12px;
     }
-    .summary span {
+    .meta span {
       display: block;
       font-family: var(--mono);
-      color: var(--muted-2);
-      font-size: 10px;
-      letter-spacing: .08em;
+      font-size: 11px;
+      letter-spacing: .1em;
       text-transform: uppercase;
-      margin-bottom: 5px;
+      color: var(--muted-2);
+      margin-bottom: 6px;
     }
-    .summary strong {
-      font-size: .95rem;
+    .meta strong {
+      font-size: 15px;
       font-weight: 650;
       overflow-wrap: anywhere;
     }
 
-    .rail {
-      list-style: none;
-      margin: 0 0 22px;
-      padding: 0;
-      display: grid;
-      gap: 0;
+    .checks { display: grid; gap: 8px; margin-bottom: 24px; }
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(7,9,15,.35);
     }
-    .step {
-      display: grid;
-      grid-template-columns: 28px 1fr;
-      gap: 12px;
-      padding: 11px 2px;
-      position: relative;
-    }
-    .step + .step::before {
-      content: "";
-      position: absolute;
-      left: 13px;
-      top: -2px;
-      width: 2px;
-      height: 14px;
-      background: var(--line-strong);
-    }
-    .dot {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
+    .num {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      display: grid; place-items: center;
       font-family: var(--mono);
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--muted);
-      background: #1a130b;
-      border: 1px solid var(--line-strong);
+      background: var(--surface-2);
+      border: 1px solid var(--border-strong);
+      flex: 0 0 30px;
     }
-    .step .copy strong { display: block; font-size: .95rem; }
-    .step .copy small { color: var(--muted-2); }
-    .step.done .dot {
-      background: #14532d;
-      border-color: #4ade80;
-      color: var(--good);
+    .check b { display: block; font-size: 15px; }
+    .check small { color: var(--muted-2); font-size: 13px; }
+    .check.done { border-color: rgba(74,222,128,.28); }
+    .check.done .num { background: #14532d; border-color: #4ade80; color: var(--good); }
+    .check.current {
+      border-color: rgba(234,179,8,.45);
+      box-shadow: 0 0 0 1px rgba(234,179,8,.12);
     }
-    .step.current .dot {
-      background: var(--amber);
-      border-color: var(--amber);
-      color: #2a1c06;
-      box-shadow: 0 0 0 4px var(--amber-glow);
+    .check.current .num {
+      background: linear-gradient(180deg, var(--amber-2), var(--amber-dim));
+      border-color: rgba(255,255,255,.08);
+      color: #1a1405;
     }
-    .step.current .copy strong { color: var(--amber); }
+    .check.current b { color: var(--amber-2); }
 
-    .button {
+    .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       width: 100%;
-      min-height: 50px;
-      border-radius: 12px;
-      background: linear-gradient(180deg, #ffd56a 0%, var(--amber) 55%, var(--amber-2) 100%);
-      color: #2a1c06;
+      min-height: 48px;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, var(--amber-2), var(--amber-dim));
+      color: #1a1405;
+      font-weight: 700;
+      font-size: 15px;
+      font-family: var(--sans);
       text-decoration: none;
-      font-weight: 800;
-      letter-spacing: -.01em;
-      box-shadow: 0 12px 28px -12px var(--amber-glow);
+      box-shadow: var(--shadow-amber), 0 1px 0 rgba(255,255,255,.18) inset;
     }
-    .button:hover { filter: brightness(1.05); }
+    .btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
 
-    .complete { text-align: center; padding: 10px 4px 2px; }
-    .stamp {
-      width: 58px; height: 58px;
-      margin: 0 auto 14px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: #14532d;
-      color: var(--good);
-      font-size: 1.6rem;
-      font-weight: 800;
-    }
-    .complete h2 { margin: 0 0 8px; font-size: 1.45rem; }
-    .complete p, .fineprint { color: var(--muted); line-height: 1.55; }
-    .fineprint {
-      margin: 16px 0 0;
-      font-size: .8rem;
+    .note {
+      margin: 14px 0 0;
       text-align: center;
+      color: var(--muted-2);
+      font-size: 13px;
       font-family: var(--mono);
     }
 
-    .expired { text-align: center; padding: 28px 8px 8px; }
-    .expired h1 { font-size: 2rem; }
+    .done-block { text-align: center; padding: 8px 0 4px; }
+    .done-block h2 { font-size: 1.45rem; margin-bottom: 8px; }
+    .done-block p { margin: 0; color: var(--muted); }
 
-    @media (max-width: 560px) {
-      main { padding-top: 28px; }
-      .card-body { padding: 16px; }
-      .summary { grid-template-columns: 1fr; }
+    .expired { text-align: center; padding: 20px 8px; }
+    .expired h1 { font-size: 2rem; margin: 10px 0; }
+
+    @media (max-width: 720px) {
+      .page { padding-top: 120px; }
+      .meta { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 480px) {
+      .meta { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-<main>
-  {% if expired %}
-    <section class="card">
-      <div class="card-bar"></div>
-      <div class="card-body expired">
-        <div class="eyebrow">Private session</div>
+  {% include '_navbar.html' %}
+
+  <div class="page">
+    {% if expired %}
+      <section class="card expired">
+        <div class="badge"><span class="badge-dot"></span> Private session</div>
         <h1>Session expired</h1>
-        <p class="lead">Back in Discord, run <strong>/ks setup</strong>, open <strong>Service Renewal</strong>, and start a new session.</p>
-        {% if error %}<div class="alert error">{{ error }}</div>{% endif %}
-      </div>
-    </section>
-  {% else %}
-    <div class="ticket">
-      <div class="eyebrow">Service bay · 4 checkpoints</div>
-      <div class="chip">{{ access_state }}</div>
-    </div>
-    <h1>{{ guild_name }}</h1>
-    <p class="lead">Work the LootLabs tasks in order. You can close this tab — the same Discord link brings you back.</p>
+        <p class="note" style="margin-top:10px">Run <strong>/ks setup</strong> in Discord, open Service Renewal, and start again.</p>
+        {% if error %}<div class="alert error" style="margin-top:18px;text-align:left">{{ error }}</div>{% endif %}
+      </section>
+    {% else %}
+      <header class="hero">
+        <div class="badge {{ access_state }}"><span class="badge-dot"></span> {{ access_state }} · {{ completed_steps|length }}/{{ checkpoint_count }} checkpoints</div>
+        <h1>{{ guild_name }}</h1>
+        <p>Finish each LootLabs task in order. Same Discord link brings you back if you close the tab.</p>
+      </header>
 
-    {% if error %}<div class="alert error"><strong>Checkpoint not recorded.</strong><br>{{ error }}</div>{% endif %}
-    {% if notice %}<div class="alert notice">{{ notice }}</div>{% endif %}
+      {% if error %}<div class="alert error"><strong>Checkpoint not recorded.</strong>{{ error }}</div>{% endif %}
+      {% if notice %}<div class="alert notice">{{ notice }}</div>{% endif %}
 
-    <section class="card">
-      <div class="card-bar"></div>
-      <div class="card-body">
-        <div class="summary">
+      <section class="card">
+        <div class="meta">
           <div><span>Access</span><strong>{{ access_state|capitalize }}</strong></div>
           <div><span>Progress</span><strong>{{ completed_steps|length }} / {{ checkpoint_count }}</strong></div>
           <div><span>Due</span><strong>{{ due_text }}</strong></div>
           <div><span>Grace ends</span><strong>{{ grace_text }}</strong></div>
         </div>
 
-        <ol class="rail" aria-label="Renewal checkpoints">
+        <div class="checks">
           {% for number in range(1, checkpoint_count + 1) %}
             {% if number in completed_steps %}
               {% set step_class = 'done' %}
@@ -295,29 +272,27 @@
             {% else %}
               {% set step_class = '' %}
             {% endif %}
-            <li class="step {{ step_class }}">
-              <span class="dot">{% if number in completed_steps %}✓{% else %}{{ number }}{% endif %}</span>
-              <span class="copy">
-                <strong>Checkpoint {{ number }}</strong>
-                <small>{% if number in completed_steps %}Cleared{% elif number == current_step and not session_completed %}Ready now{% else %}Locked{% endif %}</small>
+            <div class="check {{ step_class }}">
+              <span class="num">{% if number in completed_steps %}✓{% else %}{{ number }}{% endif %}</span>
+              <span>
+                <b>Checkpoint {{ number }}</b>
+                <small>{% if number in completed_steps %}Done{% elif number == current_step and not session_completed %}Ready{% else %}Locked{% endif %}</small>
               </span>
-            </li>
+            </div>
           {% endfor %}
-        </ol>
+        </div>
 
         {% if session_completed %}
-          <div class="complete">
-            <div class="stamp">✓</div>
-            <h2>Service renewed</h2>
-            <p>Next due time is <strong>{{ due_text }}</strong>. Existing keys work again immediately.</p>
+          <div class="done-block">
+            <h2>Renewed</h2>
+            <p>Next due time is <strong>{{ due_text }}</strong>. Existing keys work again.</p>
           </div>
         {% else %}
-          <a class="button" href="/ks/renew/{{ session_token }}/checkpoint">Open checkpoint {{ current_step }} of {{ checkpoint_count }}</a>
-          <p class="fineprint">One browser. One connection. Finish through the LootLabs link.</p>
+          <a class="btn" href="/ks/renew/{{ session_token }}/checkpoint">Open checkpoint {{ current_step }} of {{ checkpoint_count }}</a>
+          <p class="note">Stay on one browser / connection. Complete the task on LootLabs.</p>
         {% endif %}
-      </div>
-    </section>
-  {% endif %}
-</main>
+      </section>
+    {% endif %}
+  </div>
 </body>
 </html>
