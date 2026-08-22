@@ -7,313 +7,306 @@
   <title>Service renewal{% if guild_name %} · {{ guild_name }}{% endif %}</title>
   <link rel="icon" href="https://i.imgur.com/ePueN25.png" type="image/png">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
     :root {
-      --bg: #000;
-      --text: #f4f5f7;
-      --muted: #9aa3b2;
-      --faint: #6b7280;
-      --line: rgba(255,255,255,.10);
-      --line-2: rgba(255,255,255,.16);
-      --glass: rgba(10,10,14,.72);
-      --purple: #7209b7;
-      --purple-2: #c478d4;
-      --amber: #eab308;
-      --amber-2: #f5d76e;
-      --good: #4ade80;
-      --danger: #fb7185;
-      --sans: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      --accent-color: #2ecc71;
+      --accent-color-rgba: rgba(46, 204, 113, .9);
+      --accent-glow: rgba(46, 204, 113, .45);
+      --particle-color: #4ade80;
+      --gradient-primary: linear-gradient(90deg, #ffffff 0%, #2ecc71 100%);
     }
 
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
-    html, body {
+    body {
       background: #000;
-      color: var(--text);
-      font-family: var(--sans);
-      -webkit-font-smoothing: antialiased;
+      color: #fff;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
-    body { min-height: 100vh; overflow-x: hidden; }
 
-    .orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-    .orb {
-      position: absolute; border-radius: 50%; filter: blur(90px); opacity: .34;
+    .bg-lights {
+      position: fixed; inset: 0; z-index: 1; overflow: hidden; pointer-events: none;
     }
-    .orb-a { width: 520px; height: 520px; top: -160px; left: -120px; background: #7b2cbf; }
-    .orb-b { width: 420px; height: 420px; top: 18%; right: -140px; background: #3d008a; }
-    .orb-c { width: 360px; height: 360px; bottom: -80px; left: 30%; background: #a16207; opacity: .18; }
+    .main-light {
+      position: absolute;
+      width: 900px; height: 900px;
+      border-radius: 50%;
+      filter: blur(160px);
+      opacity: .22;
+      background: radial-gradient(circle, #14532d 0%, transparent 65%);
+    }
+    #mainLight1 { top: -220px; left: -180px; }
+    #mainLight2 { bottom: -280px; right: -220px; width: 1100px; height: 1100px; }
 
-    .wrap {
-      position: relative;
-      z-index: 2;
-      max-width: 760px;
+    .particles {
+      position: fixed; inset: 0; z-index: 2; pointer-events: none;
+    }
+    .particle {
+      position: absolute;
+      width: 3px; height: 3px;
+      background: var(--particle-color);
+      border-radius: 50%;
+      opacity: .55;
+      box-shadow: 0 0 10px var(--particle-color);
+      animation: floatParticle 22s linear infinite;
+    }
+    @keyframes floatParticle {
+      0% { transform: translateY(100vh) scale(0); opacity: 0; }
+      8% { opacity: .55; }
+      100% { transform: translateY(-8vh) translateX(40px) scale(.8); opacity: 0; }
+    }
+
+    .container {
+      max-width: 1000px;
       margin: 0 auto;
-      padding: 148px 20px 72px;
+      padding: 130px 20px 60px;
+      position: relative;
+      z-index: 10;
     }
 
-    .eyebrow {
-      display: flex;
+    .back-to-scripts {
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 14px;
-      color: var(--faint);
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: .16em;
-      text-transform: uppercase;
+      gap: 8px;
+      color: #999;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+      margin-bottom: 30px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06);
     }
-    .eyebrow i {
-      width: 22px; height: 1px;
-      background: linear-gradient(90deg, transparent, var(--purple-2), transparent);
+    .back-to-scripts:hover {
+      color: #fff;
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,255,255,.15);
     }
 
-    .hero { text-align: center; margin-bottom: 22px; }
-    .hero h1 {
-      margin: 0 0 10px;
-      font-size: clamp(1.85rem, 5vw, 2.7rem);
+    .script-header { text-align: center; margin-bottom: 36px; }
+    .script-game {
+      font-size: 14px;
+      color: var(--accent-color);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .script-title {
+      font-size: clamp(32px, 5vw, 48px);
       font-weight: 800;
-      letter-spacing: -.035em;
-      line-height: 1.08;
-      background: linear-gradient(90deg, #fff 0%, #fff 42%, #b388ff 100%);
+      letter-spacing: -1px;
+      margin-bottom: 14px;
+      background: var(--gradient-primary);
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    .hero p {
-      margin: 0 auto;
-      max-width: 460px;
-      color: var(--muted);
-      font-size: 15px;
+    .script-description {
+      font-size: 17px;
+      color: #ccc;
       line-height: 1.6;
+      max-width: 580px;
+      margin: 0 auto;
     }
 
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-      padding: 6px 12px 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--line-2);
-      background: rgba(0,0,0,.35);
-      color: #d6d8de;
-      font-size: 12.5px;
-      font-weight: 600;
-    }
-    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 4px rgba(234,179,8,.14); }
-    .pill.blocked .dot { background: var(--danger); box-shadow: 0 0 0 4px rgba(251,113,133,.16); }
-    .pill.active .dot { background: var(--good); box-shadow: 0 0 0 4px rgba(74,222,128,.16); }
-    .pill.grace .dot { background: var(--amber-2); }
-
-    .flash {
-      margin: 0 0 14px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      font-size: 14px;
-      line-height: 1.55;
-    }
-    .flash b { display: block; margin-bottom: 2px; }
-    .flash.err { color: #fecdd3; background: rgba(251,113,133,.08); border: 1px solid rgba(251,113,133,.26); }
-    .flash.ok { color: #bbf7d0; background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.2); }
-
-    .card {
-      position: relative;
-      border-radius: 22px;
-      border: 1px solid var(--line-2);
-      background:
-        radial-gradient(circle at 1px 1px, rgba(255,255,255,.045) 1px, transparent 1.35px),
-        linear-gradient(180deg, rgba(18,18,24,.88), rgba(8,8,12,.92));
-      background-size: 20px 20px, auto;
-      box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 30px 80px rgba(0,0,0,.45);
-      padding: 26px 24px 22px;
-      overflow: hidden;
-    }
-    .card::before {
-      content: "";
-      position: absolute; inset: 0 auto auto 0;
-      width: 100%; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(196,120,212,.55), rgba(234,179,8,.35), transparent);
+    .script-content {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 24px;
+      align-items: start;
     }
 
-    .rail {
+    .features-section, .script-section {
+      background: rgba(0,0,0,.5);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.3);
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
       display: flex;
       align-items: center;
-      gap: 0;
-      margin: 6px 4px 26px;
-    }
-    .node { flex: 0 0 auto; text-align: center; width: 58px; }
-    .orbn {
-      width: 36px; height: 36px; margin: 0 auto 8px;
-      border-radius: 12px;
-      display: grid; place-items: center;
-      font-size: 13px; font-weight: 700;
-      color: #9aa3b2;
-      background: rgba(255,255,255,.04);
-      border: 1px solid var(--line-2);
-    }
-    .node small {
-      display: block;
-      color: var(--faint);
-      font-size: 10.5px;
-      font-weight: 650;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-    .seg {
-      flex: 1;
-      height: 2px;
-      margin: 0 4px 22px;
-      border-radius: 99px;
-      background: rgba(255,255,255,.08);
-    }
-    .node.done .orbn {
-      color: #052e16;
-      background: linear-gradient(180deg, #86efac, #16a34a);
-      border-color: transparent;
-    }
-    .node.done small { color: #86efac; }
-    .seg.on { background: linear-gradient(90deg, #4ade80, rgba(234,179,8,.7)); }
-    .node.now .orbn {
-      color: #1a1405;
-      background: linear-gradient(180deg, #f5d76e, #ca8a04);
-      border-color: transparent;
-      box-shadow: 0 8px 22px rgba(234,179,8,.28);
-    }
-    .node.now small { color: #f5d76e; }
-
-    .meta {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      margin-bottom: 22px;
     }
-    .meta div {
-      padding: 12px 12px 11px;
-      border-radius: 14px;
-      background: rgba(0,0,0,.28);
-      border: 1px solid var(--line);
-    }
-    .meta span {
-      display: block;
-      margin-bottom: 5px;
-      color: var(--faint);
-      font-size: 11px;
-      font-weight: 650;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-    .meta strong { font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
 
-    .cta {
+    .features-list { list-style: none; margin-top: 8px; }
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 0;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      color: #ccc;
+    }
+    .feature-item:last-child { border-bottom: none; }
+    .feature-icon {
+      width: 20px; height: 20px; flex: 0 0 20px;
+      color: var(--accent-color);
+      filter: drop-shadow(0 0 4px var(--accent-glow));
+    }
+    .feature-item.locked { color: #777; }
+    .feature-item.locked .feature-icon { color: #555; filter: none; }
+    .feature-item.now { color: #fff; }
+    .tag {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 600;
+      color: #888;
+    }
+    .feature-item.done .tag { color: var(--accent-color); }
+    .feature-item.now .tag { color: #fff; }
+
+    .meta-row { margin: 8px 0 18px; }
+    .meta-row div {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+      font-size: 14px;
+      color: #ccc;
+    }
+    .meta-row div:last-child { border-bottom: none; }
+    .meta-row span { color: #888; }
+    .meta-row strong { text-align: right; font-weight: 600; color: #fff; }
+
+    .action-btn {
       display: flex;
       align-items: center;
       justify-content: center;
       width: 100%;
-      min-height: 50px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.08);
-      background: linear-gradient(180deg, #f5d76e, #b45309);
-      color: #1a1405;
-      font: 750 15px/1 var(--sans);
+      padding: 14px 20px;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 14px;
       text-decoration: none;
-      box-shadow: 0 12px 28px rgba(180,83,9,.28), 0 1px 0 rgba(255,255,255,.25) inset;
+      color: #fff;
+      background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+      box-shadow: 0 10px 25px rgba(46,204,113,.3);
     }
-    .cta:hover { filter: brightness(1.06); transform: translateY(-1px); }
+    .action-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 35px rgba(46,204,113,.5); }
 
-    .hint {
-      margin: 12px 0 0;
-      text-align: center;
-      color: var(--faint);
-      font-size: 12.5px;
+    .hint { margin-top: 12px; text-align: center; color: #777; font-size: 13px; line-height: 1.5; }
+
+    .flash {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 14px;
     }
+    .flash.err { background: rgba(231,76,60,.12); border: 1px solid rgba(231,76,60,.28); color: #ffb4b0; }
+    .flash.ok { background: rgba(46,204,113,.1); border: 1px solid rgba(46,204,113,.24); color: #b7f7ce; }
 
-    .done, .dead { text-align: center; padding: 10px 6px 4px; }
-    .mark {
-      width: 54px; height: 54px; margin: 4px auto 14px;
-      border-radius: 18px;
-      display: grid; place-items: center;
-      font-size: 24px;
-    }
-    .done .mark { background: rgba(74,222,128,.12); border: 1px solid rgba(74,222,128,.28); }
-    .dead .mark { background: rgba(251,113,133,.1); border: 1px solid rgba(251,113,133,.24); }
-    .done h2, .dead h1 { margin: 0 0 8px; font-size: 1.45rem; letter-spacing: -.02em; }
-    .dead h1 { font-size: 1.7rem; }
-    .done p, .dead p { margin: 0; color: var(--muted); }
+    .error-state { text-align: center; padding: 50px 16px; color: #888; }
+    .error-state h1 { color: #fff; font-size: 28px; margin: 0 0 10px; }
 
-    @media (max-width: 640px) {
-      .wrap { padding-top: 126px; }
-      .meta { grid-template-columns: 1fr; }
-      .node { width: 48px; }
-      .orbn { width: 32px; height: 32px; border-radius: 10px; }
+    @media (max-width: 768px) {
+      .script-content { grid-template-columns: 1fr; }
+      .container { padding-top: 120px; }
     }
   </style>
 </head>
 <body>
-  <div class="orbs" aria-hidden="true">
-    <div class="orb orb-a"></div>
-    <div class="orb orb-b"></div>
-    <div class="orb orb-c"></div>
+  <div class="bg-lights">
+    <div id="mainLight1" class="main-light"></div>
+    <div id="mainLight2" class="main-light"></div>
   </div>
+  <div class="particles" id="particles"></div>
 
   {% include '_navbar.html' %}
 
-  <main class="wrap">
+  <div class="container">
+    <a href="/" class="back-to-scripts">← Back to Home</a>
+
     {% if expired %}
-      <section class="card dead">
-        <div class="mark">✕</div>
+      <div class="features-section error-state">
         <h1>Session expired</h1>
         <p>Run <strong>/ks setup</strong> in Discord, open Service Renewal, and start again.</p>
-        {% if error %}<div class="flash err" style="margin-top:16px;text-align:left">{{ error }}</div>{% endif %}
-      </section>
+        {% if error %}<div class="flash err" style="margin-top:18px;text-align:left">{{ error }}</div>{% endif %}
+      </div>
     {% else %}
-      <header class="hero">
-        <div class="eyebrow"><i></i> Service renewal <i></i></div>
-        <div class="pill {{ access_state }}"><span class="dot"></span> {{ access_state }} · {{ completed_steps|length }}/{{ checkpoint_count }}</div>
-        <h1>{{ guild_name }}</h1>
-        <p>Four LootLabs tasks, in order. Same Discord link brings you back if you close the tab.</p>
+      <header class="script-header">
+        <div class="script-game">Service renewal</div>
+        <h1 class="script-title">{{ guild_name }}</h1>
+        <p class="script-description">Finish the four LootLabs tasks in order. The same Discord link brings you back if you close the tab.</p>
       </header>
 
-      {% if error %}<div class="flash err"><b>Checkpoint not recorded.</b>{{ error }}</div>{% endif %}
+      {% if error %}<div class="flash err"><strong>Checkpoint not recorded.</strong> {{ error }}</div>{% endif %}
       {% if notice %}<div class="flash ok">{{ notice }}</div>{% endif %}
 
-      <section class="card">
-        <div class="rail">
-          {% for number in range(1, checkpoint_count + 1) %}
-            {% if number in completed_steps %}
-              {% set step_class = 'done' %}
-            {% elif number == current_step and not session_completed %}
-              {% set step_class = 'now' %}
-            {% else %}
-              {% set step_class = '' %}
-            {% endif %}
-            <div class="node {{ step_class }}">
-              <div class="orbn">{% if number in completed_steps %}✓{% else %}{{ number }}{% endif %}</div>
-              <small>{% if number in completed_steps %}Done{% elif number == current_step and not session_completed %}Now{% else %}Next{% endif %}</small>
-            </div>
-            {% if number != checkpoint_count %}
-              <div class="seg{% if number in completed_steps %} on{% endif %}"></div>
-            {% endif %}
-          {% endfor %}
-        </div>
+      <div class="script-content">
+        <section class="features-section">
+          <h2 class="section-title">Checkpoints</h2>
+          <ul class="features-list">
+            {% for number in range(1, checkpoint_count + 1) %}
+              {% if number in completed_steps %}
+                {% set step_class = 'done' %}
+                {% set step_label = 'Done' %}
+              {% elif number == current_step and not session_completed %}
+                {% set step_class = 'now' %}
+                {% set step_label = 'Ready' %}
+              {% else %}
+                {% set step_class = 'locked' %}
+                {% set step_label = 'Locked' %}
+              {% endif %}
+              <li class="feature-item {{ step_class }}">
+                {% if number in completed_steps %}
+                  <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>
+                {% else %}
+                  <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg>
+                {% endif %}
+                <span>Checkpoint {{ number }}</span>
+                <span class="tag">{{ step_label }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
 
-        <div class="meta">
-          <div><span>Access</span><strong>{{ access_state|capitalize }}</strong></div>
-          <div><span>Due</span><strong>{{ due_text }}</strong></div>
-          <div><span>Grace ends</span><strong>{{ grace_text }}</strong></div>
-        </div>
-
-        {% if session_completed %}
-          <div class="done">
-            <div class="mark">✓</div>
-            <h2>Renewed</h2>
-            <p>Next due is <strong>{{ due_text }}</strong>. Existing keys work again.</p>
+        <aside class="script-section">
+          <h2 class="section-title">Status</h2>
+          <div class="meta-row">
+            <div><span>Access</span><strong>{{ access_state|capitalize }}</strong></div>
+            <div><span>Progress</span><strong>{{ completed_steps|length }} / {{ checkpoint_count }}</strong></div>
+            <div><span>Due</span><strong>{{ due_text }}</strong></div>
+            <div><span>Grace ends</span><strong>{{ grace_text }}</strong></div>
           </div>
-        {% else %}
-          <a class="cta" href="/ks/renew/{{ session_token }}/checkpoint">Open checkpoint {{ current_step }} of {{ checkpoint_count }}</a>
-          <p class="hint">Stay on this browser. Finish the LootLabs task, then you’ll land back here.</p>
-        {% endif %}
-      </section>
+
+          {% if session_completed %}
+            <p class="hint">Renewed. Next due is <strong>{{ due_text }}</strong>. Existing keys work again.</p>
+          {% else %}
+            <a class="action-btn" href="/ks/renew/{{ session_token }}/checkpoint">Open checkpoint {{ current_step }} of {{ checkpoint_count }}</a>
+            <p class="hint">Stay on this browser and finish the LootLabs task.</p>
+          {% endif %}
+        </aside>
+      </div>
     {% endif %}
-  </main>
+  </div>
+
+  <script>
+    (function () {
+      var root = document.getElementById('particles');
+      if (!root) return;
+      for (var i = 0; i < 28; i++) {
+        var el = document.createElement('span');
+        el.className = 'particle';
+        el.style.left = (Math.random() * 100) + '%';
+        el.style.animationDelay = (-Math.random() * 22) + 's';
+        el.style.animationDuration = (16 + Math.random() * 12) + 's';
+        root.appendChild(el);
+      }
+    })();
+  </script>
 </body>
 </html>
