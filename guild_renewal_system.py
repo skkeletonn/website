@@ -607,10 +607,6 @@ def _create_or_get_renewal_session_inner(guild_id, admin_discord_id, now):
         raise ValueError("This server has permanent access and does not need renewal.")
     if not status.get("configured"):
         raise ValueError("Configure service renewal before starting checkpoints.")
-    if not status.get("renewal_available"):
-        raise ValueError(
-            "Renewal opens 24 hours before the current due time."
-        )
 
     existing = renewal_sessions_collection.find_one(
         {
@@ -666,8 +662,6 @@ def insert_renewal_session(guild_id, admin_discord_id, token, now=None):
     status = get_renewal_status(guild_id, now)
     if not status.get("configured"):
         raise ValueError("Configure service renewal before starting checkpoints.")
-    if not status.get("renewal_available"):
-        raise ValueError("Renewal opens 24 hours before the current due time.")
 
     existing = renewal_sessions_collection.find_one({"_id": token})
     if existing:
@@ -931,6 +925,12 @@ def start_renewal_checkpoint(session_token, client_ip, base_url=None, now=None):
         raise ValueError("This renewal session expired. Start again from Discord.")
     if session.get("completed"):
         raise ValueError("This renewal is already complete.")
+    status = get_renewal_status(session["guild_id"], now)
+    already_started = bool(session.get("checkpoint_started_at"))
+    if not status.get("renewal_available") and not already_started:
+        raise ValueError(
+            "Checkpoints open 24 hours before the due time. You can look around until then."
+        )
     entitlement = get_renewal_entitlement(session["guild_id"])
     if not entitlement or not entitlement.get("enabled"):
         raise ValueError("This server's renewal configuration is no longer active.")
