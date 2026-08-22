@@ -13,6 +13,7 @@ import re
 import secrets
 import smtplib
 import time
+from contextlib import nullcontext
 from datetime import datetime, time as datetime_time, timedelta, timezone
 from email.message import EmailMessage
 from email.utils import formataddr
@@ -32,9 +33,15 @@ except ImportError:  # Pure state/date tests do not need the database driver.
 logger = logging.getLogger(__name__)
 
 MONGODB_URI = os.environ.get("MONGODB_URI")
-SERVER_BASE_URL = os.environ.get(
-    "SERVER_BASE_URL", "https://vadrifts.onrender.com"
-).rstrip("/")
+SERVER_BASE_URL = (
+    os.environ.get("SERVER_BASE_URL") or "https://vadrifts.onrender.com"
+).strip().rstrip("/")
+OWNER_GUILD_ID = (os.environ.get("OWNER_GUILD_ID") or "1241797935100989594").strip()
+
+
+def is_renewal_exempt(guild_id):
+    """Owner guild skips the paid cycle. Guild id comes from the server, never the client."""
+    return str(guild_id or "") == OWNER_GUILD_ID
 
 RENEWAL_PERIOD_DAYS = 3
 
@@ -289,6 +296,22 @@ def get_renewal_entitlement(guild_id):
 
 def get_renewal_status(guild_id, now=None):
     """Get dynamic access state. Missing records deliberately keep legacy access."""
+    if is_renewal_exempt(guild_id):
+        return {
+            "configured": True,
+            "state": "exempt",
+            "allows_access": True,
+            "renewal_available": False,
+            "exempt": True,
+            "message": "This server has permanent service access.",
+            "cycle": 0,
+            "timezone": "UTC",
+            "local_time": "00:00",
+            "email": "",
+            "email_verified": False,
+            "guild_name": "Discord server",
+            "owner_discord_id": None,
+        }
     if renewal_entitlements_collection is None:
         if MONGODB_URI:
             return {
@@ -552,6 +575,14 @@ def configure_renewal(
     return document
 
 
+def _mongo_deadline(seconds=6):
+    try:
+        from pymongo import timeout as mongo_timeout
+        return mongo_timeout(seconds)
+    except Exception:
+        return nullcontext()
+
+
 def create_or_get_renewal_session(guild_id, admin_discord_id, now=None):
     """Create an expiring admin-bound session once its 24-hour window opens."""
     if renewal_sessions_collection is None:
@@ -560,6 +591,11 @@ def create_or_get_renewal_session(guild_id, admin_discord_id, now=None):
     guild_id = str(guild_id)
     admin_discord_id = str(admin_discord_id)
     logger.info("create_or_get_renewal_session guild=%s admin=%s", guild_id, admin_discord_id)
+    with _mongo_deadline(6):
+        return _create_or_get_renewal_session_inner(guild_id, admin_discord_id, now)
+
+
+def _create_or_get_renewal_session_inner(guild_id, admin_discord_id, now):
     status = get_renewal_status(guild_id, now)
     logger.info(
         "renewal status configured=%s available=%s state=%s",
@@ -567,6 +603,8 @@ def create_or_get_renewal_session(guild_id, admin_discord_id, now=None):
         status.get("renewal_available"),
         status.get("state"),
     )
+    if is_renewal_exempt(guild_id):
+        raise ValueError("This server has permanent access and does not need renewal.")
     if not status.get("configured"):
         raise ValueError("Configure service renewal before starting checkpoints.")
     if not status.get("renewal_available"):
@@ -1326,6 +1364,8 @@ def process_due_email_reminders(now=None):
         if not event:
             continue
         guild_id = str(entitlement["_id"])
+        if is_renewal_exempt(guild_id):
+            continue
         cycle = int(entitlement.get("cycle", 1))
         notification_id = f"{guild_id}:{cycle}:{event}"
         try:
