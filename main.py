@@ -336,9 +336,9 @@ def complete_feature_unlock(feature_id):
 @app.route('/docs/arrayfield')
 def arrayfield_docs():
     try:
-        return send_file('templates/arrayfield-docs.html')
-    except FileNotFoundError:
-        logger.error("arrayfield-docs.html template not found")
+        return render_template('arrayfield_docs.html')
+    except Exception as e:
+        logger.error(f"arrayfield_docs.html render failed: {e}")
         return jsonify({"error": "Documentation page not found"}), 404
 
 
