@@ -962,8 +962,20 @@ def _valid_lootlabs_referrer(referer):
     return any(host == domain or host.endswith("." + domain) for domain in allowed)
 
 
+def _wait_for_renewal_session(session_token, attempts=6, delay=0.35):
+    session = get_renewal_session(session_token)
+    if session:
+        return session
+    for _ in range(max(attempts, 1)):
+        time.sleep(delay)
+        session = get_renewal_session(session_token)
+        if session:
+            return session
+    return None
+
+
 def _render_renewal_page(session_token, error=None, status_code=200):
-    renewal_session = get_renewal_session(session_token)
+    renewal_session = _wait_for_renewal_session(session_token)
     if not renewal_session:
         response = make_response(
             render_template(
