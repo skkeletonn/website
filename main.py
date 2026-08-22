@@ -99,7 +99,11 @@ def sanitize_script(script):
     safe['has_linkvertise'] = bool(linkvertise_link)
     safe['has_generic_key'] = bool(key_link) and not safe['has_workink']
     safe['has_key_system'] = safe['has_workink'] or safe['has_lootlabs'] or safe['has_linkvertise'] or safe['has_generic_key']
-    safe.pop('key_link', None)
+    # Discord key systems just point at the public server invite, so the front end
+    # is allowed to keep that link. (Stripping it made the "Get Key" button call
+    # window.open(undefined) -> about:blank.) Every other key_link stays hidden.
+    if safe.get('key_type') != 'discord' or not key_link:
+        safe.pop('key_link', None)
     safe.pop('lootlabs_link', None)
     safe.pop('linkvertise_link', None)
     return safe
