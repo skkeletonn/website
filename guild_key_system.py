@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 MONGODB_URI = os.environ.get("MONGODB_URI")
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
-SERVER_BASE_URL = os.environ.get("SERVER_BASE_URL", "https://vadrifts.onrender.com")
+SERVER_BASE_URL = (os.environ.get("SERVER_BASE_URL") or "https://vadrifts.onrender.com").strip().rstrip("/")
 
 MIN_COMPLETION_SECONDS = 25
 
