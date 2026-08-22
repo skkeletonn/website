@@ -197,6 +197,13 @@
       box-shadow: 0 10px 25px rgba(46,204,113,.3);
     }
     .action-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 35px rgba(46,204,113,.5); }
+    .action-btn.wait {
+      background: rgba(255,255,255,.06);
+      color: #bbb;
+      box-shadow: none;
+      cursor: default;
+    }
+    .action-btn.wait:hover { transform: none; box-shadow: none; }
 
     .hint { margin-top: 12px; text-align: center; color: #777; font-size: 13px; line-height: 1.5; }
 
@@ -308,5 +315,5 @@
       }
     })();
   </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f3b8f308be5aa3',t:'MTc4NzQyMTA1Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
