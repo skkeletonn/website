@@ -41,6 +41,7 @@ from guild_key_system import (
 from guild_renewal_system import (
     CHECKPOINT_COUNT,
     complete_renewal_checkpoint,
+    complete_static_renewal_step,
     format_renewal_timestamp,
     get_renewal_entitlement,
     get_renewal_session,
@@ -1071,6 +1072,49 @@ def ks_renewal_checkpoint_complete(session_token, step, completion_token):
             503,
         )
 
+    if result.get("completed"):
+        return redirect(f"/ks/renew/{session_token}?renewed=1")
+    return redirect(f"/ks/renew/{session_token}?step=complete")
+
+
+@app.route('/ks/renew/done/<int:step>')
+def ks_renewal_done_static(step):
+    """Landing URL for the four static LootLabs lockers."""
+    referer = request.headers.get("Referer", "")
+    if not _valid_lootlabs_referrer(referer):
+        logger.warning("Rejected static renewal completion with referrer %r", referer)
+        token = request.cookies.get("vadrifts_renewal")
+        if token:
+            return _render_renewal_page(
+                token,
+                "Return through the LootLabs checkpoint instead of opening the completion URL directly.",
+                403,
+            )
+        return _render_result(
+            "❌", "Invalid Access",
+            "Return through the LootLabs checkpoint.",
+            "error", "Access Denied",
+        ), 403
+    token = request.cookies.get("vadrifts_renewal")
+    try:
+        result = complete_static_renewal_step(step, get_client_ip(), token)
+    except ValueError as exc:
+        if token:
+            return _render_renewal_page(token, str(exc), 403)
+        return _render_result("❌", "Renewal Error", str(exc), "error", "Error"), 403
+    except Exception:
+        logger.exception("Could not complete static renewal checkpoint")
+        if token:
+            return _render_renewal_page(
+                token, "The checkpoint could not be saved. Reload and try again.", 503
+            )
+        return _render_result(
+            "❌", "Renewal Error",
+            "The checkpoint could not be saved. Reload and try again.",
+            "error", "Error",
+        ), 503
+
+    session_token = result.get("session_token") or token
     if result.get("completed"):
         return redirect(f"/ks/renew/{session_token}?renewed=1")
     return redirect(f"/ks/renew/{session_token}?step=complete")
