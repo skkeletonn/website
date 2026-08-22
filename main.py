@@ -996,6 +996,9 @@ def _render_renewal_page(session_token, error=None, status_code=200):
     grace_text = format_renewal_timestamp(
         entitlement.get("grace_ends_at"), timezone_name
     )
+    opens_text = format_renewal_timestamp(
+        access.get("renewal_opens_at"), timezone_name
+    )
     response = make_response(
         render_template(
             "guild-renewal.html",
@@ -1015,6 +1018,8 @@ def _render_renewal_page(session_token, error=None, status_code=200):
             access_state=access.get("state", "active"),
             due_text=due_text,
             grace_text=grace_text,
+            renewal_available=bool(access.get("renewal_available")),
+            opens_text=opens_text,
         ),
         status_code,
     )
