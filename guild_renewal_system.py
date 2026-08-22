@@ -651,6 +651,55 @@ def _create_or_get_renewal_session_inner(guild_id, admin_discord_id, now):
     return token
 
 
+def insert_renewal_session(guild_id, admin_discord_id, token, now=None):
+    """Persist a bot-generated session token. Never invent a different id."""
+    if renewal_sessions_collection is None:
+        raise RuntimeError("Renewal database is unavailable.")
+    if is_renewal_exempt(guild_id):
+        raise ValueError("This server has permanent access and does not need renewal.")
+    now = time.time() if now is None else float(now)
+    guild_id = str(guild_id)
+    admin_discord_id = str(admin_discord_id)
+    token = str(token or "").strip()
+    if not token:
+        raise ValueError("Missing renewal session token.")
+    status = get_renewal_status(guild_id, now)
+    if not status.get("configured"):
+        raise ValueError("Configure service renewal before starting checkpoints.")
+    if not status.get("renewal_available"):
+        raise ValueError("Renewal opens 24 hours before the current due time.")
+
+    existing = renewal_sessions_collection.find_one({"_id": token})
+    if existing:
+        return token
+    expires_at = now + RENEWAL_SESSION_SECONDS
+    try:
+        renewal_sessions_collection.insert_one(
+            {
+                "_id": token,
+                "guild_id": guild_id,
+                "admin_discord_id": admin_discord_id,
+                "cycle": int(status.get("cycle", 1)),
+                "current_step": 1,
+                "completed_steps": [],
+                "checkpoint_links": {},
+                "checkpoint_started_at": {},
+                "step_tokens": {
+                    str(step): secrets.token_urlsafe(24)
+                    for step in range(1, CHECKPOINT_COUNT + 1)
+                },
+                "ip": None,
+                "completed": False,
+                "created_at": now,
+                "expires_at": expires_at,
+                "expires_at_ttl": datetime.fromtimestamp(expires_at, timezone.utc),
+            }
+        )
+    except DuplicateKeyError:
+        pass
+    return token
+
+
 def get_renewal_session(session_token, now=None):
     if renewal_sessions_collection is None:
         return None
