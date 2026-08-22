@@ -414,6 +414,19 @@ input[type=number]:focus, input[type=text]:focus { border-color: var(--mint); bo
 .curve-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; flex-wrap: wrap; gap: 12px; }
 .curve-hint { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .04em; }
 .curve-hint b { color: var(--mint-3); font-weight: 600; }
+.pending-bar {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 10px 22px; border-top: 1px solid var(--border); background: var(--surface-2);
+}
+.pending-bar .pk { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.chip {
+  font-family: var(--mono); font-size: 11px; padding: 4px 9px; border-radius: 999px;
+  background: rgba(76,175,80,.12); border: 1px solid rgba(76,175,80,.35); color: var(--mint-3);
+}
+.chip.warn { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.35); color: var(--warn); }
+.point-edit { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.point-edit label { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.sel-pt { outline: 2px solid var(--mint-3); }
 
 .cover-zone { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; }
 @media (max-width: 640px) { .cover-zone { grid-template-columns: 1fr; } }
@@ -572,6 +585,7 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
           <span id="fileRate">44.1 kHz</span>
         </div>
       </div>
+      <button class="btn btn-ghost" id="btnUndo" title="Undo last bake (Ctrl+Z)">undo</button>
       <button class="btn btn-ghost" id="changeFile">change</button>
     </div>
 
@@ -726,11 +740,12 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
           <div class="row">
             <div class="label">Quick presets<small>tap to snap</small></div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="btn" data-speed="0.5" style="padding:6px 12px;font-size:13px;">0.5×</button>
+              <button class="btn" data-speed="0.50" style="padding:6px 12px;font-size:13px;">0.50×</button>
               <button class="btn" data-speed="0.75" style="padding:6px 12px;font-size:13px;">0.75×</button>
+              <button class="btn" data-speed="0.90" style="padding:6px 12px;font-size:13px;">0.90×</button>
               <button class="btn" data-speed="1" style="padding:6px 12px;font-size:13px;">1×</button>
-              <button class="btn" data-speed="1.25" style="padding:6px 12px;font-size:13px;">1.25×</button>
-              <button class="btn" data-speed="1.5" style="padding:6px 12px;font-size:13px;">1.5×</button>
+              <button class="btn" data-speed="1.15" style="padding:6px 12px;font-size:13px;">1.15×</button>
+              <button class="btn" data-speed="1.30" style="padding:6px 12px;font-size:13px;">1.30×</button>
               <button class="btn" data-speed="2" style="padding:6px 12px;font-size:13px;">2×</button>
             </div>
             <div></div>
@@ -754,8 +769,12 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
         <div class="curve-wrap">
           <canvas id="curveCanvas"></canvas>
           <div class="curve-foot">
-            <div class="curve-hint">drag points · <b>click empty area</b> to add · <b>right-click</b> to remove</div>
-            <div style="display:flex;gap:8px;">
+            <div class="curve-hint">drag · <b>click</b> add · <b>right-click</b> remove · snaps to 1.00× · up to <b>4×</b></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <div class="segmented" id="curveInterpSeg">
+                <button data-interp="linear" class="active">Linear</button>
+                <button data-interp="smooth">Smooth</button>
+              </div>
               <button class="btn btn-ghost" id="btnCurveReset" style="padding:6px 12px;font-size:13px;">Reset curve</button>
             </div>
           </div>
@@ -765,6 +784,11 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
           <div class="stat"><div class="k">max</div><div class="v" id="curveMax">1.00×</div></div>
           <div class="stat"><div class="k">avg</div><div class="v" id="curveAvg">1.00×</div></div>
           <div class="stat"><div class="k">out duration</div><div class="v accent" id="curveOutDur">0:00</div></div>
+        </div>
+        <div class="point-edit" id="curvePointEdit">
+          <label>selected point</label>
+          <input type="number" id="curvePointVal" min="0.25" max="4" step="0.01" value="1" style="max-width:110px;" title="Exact speed for the selected point"/>
+          <span class="muted" style="font-size:12px;" id="curvePointMeta">click a point, then type the exact speed</span>
         </div>
         <div class="btn-row">
           <button class="btn btn-primary" id="btnApplyCurve">
@@ -795,8 +819,12 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
             <div></div>
           </div>
         </div>
-        <p class="muted" style="font-size:12px;margin-top:12px;">Release the slider to apply the shift. Tempo is preserved — only pitch changes.</p>
+        <p class="muted" style="font-size:12px;margin-top:12px;">Bakes a real pitch shift — duration stays the same. (Browsers can't preview pitch without also changing speed, so hit save to hear it.)</p>
         <div class="btn-row">
+          <button class="btn btn-primary" id="btnApplyPitch">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Save pitch on preview
+          </button>
           <button class="btn btn-ghost" id="btnResetPitch">Reset to 0</button>
         </div>
       </div>
@@ -824,9 +852,13 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
 
     </div>
 
+    <div class="pending-bar" id="pendingBar">
+      <span class="pk">will apply on download</span>
+      <span class="chip" id="pendingNone">nothing pending</span>
+    </div>
     <div class="card-head" style="border-top:1px solid var(--border);border-bottom:none;">
       <h2>Export</h2>
-      <span class="curve-hint">downloads with all unsaved adjustments applied</span>
+      <span class="curve-hint">unsaved trim / fade / speed / curve / pitch bake into the download</span>
     </div>
     <div class="card-body">
       <div class="export-grid">
@@ -884,6 +916,16 @@ const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
     const next = cur === 'light' ? 'dark' : 'light';
     document.documentElement.dataset.theme = next;
     localStorage.setItem('teenytuning-theme', next);
+    if (state.ws) {
+      try {
+        state.ws.setOptions({
+          waveColor: getCss('--mint-3'),
+          progressColor: getCss('--mint-deep'),
+          cursorColor: getCss('--mint-3'),
+        });
+      } catch (_) {}
+    }
+    drawCurve();
   });
 })();
 
@@ -936,6 +978,7 @@ const state = {
   ws: null,
   wsRegions: null,
   audioCtx: null,
+  undoStack: [],
 };
 
 function getCtx() {
@@ -955,6 +998,14 @@ drop.addEventListener('drop', (e) => {
   const f = e.dataTransfer.files?.[0];
   if (f) handleFile(f);
 });
+['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, (e) => {
+  if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault();
+}));
+document.addEventListener('drop', (e) => {
+  if (e.target.closest && e.target.closest('#drop')) return;
+  const f = e.dataTransfer?.files?.[0];
+  if (f) { e.preventDefault(); handleFile(f); }
+});
 fileInput.addEventListener('change', (e) => {
   const f = e.target.files?.[0];
   if (f) handleFile(f);
@@ -969,6 +1020,7 @@ window.addEventListener('paste', (e) => {
   }
 });
  $('#changeFile').addEventListener('click', () => fileInput.click());
+ $('#btnUndo').addEventListener('click', () => popUndo());
 
 async function handleFile(file) {
   const isAudio = file.type.startsWith('audio/');
@@ -995,6 +1047,7 @@ async function handleFile(file) {
     busy.prog(0.8, 'rendering waveform…');
     state.audioBuffer = buf;
     state.originalBuffer = cloneBuffer(buf);
+    state.undoStack = [];
     state.cover = { data: null, mime: null };
     await tryAutoExtractCover();
     renderLoadedFile(file, buf);
@@ -1293,6 +1346,8 @@ function bindSwitch(el, key) {
       if (state.ws) state.ws.setPlaybackRate(state.livePreview.speed, on);
       $('#pitchLockLabel').textContent = on ? 'on' : 'off';
       $('#pitchLockLabel').style.color = on ? 'var(--mint-3)' : 'var(--muted)';
+      const semis = 12 * Math.log2(state.livePreview.speed || 1);
+      $('#speedPitchShift').textContent = on ? '0.0 st' : (semis >= 0 ? '+' : '') + semis.toFixed(1) + ' st';
     }
   });
 }
@@ -1361,8 +1416,9 @@ function syncRegion() {
   }
   busy.show('trimming…');
   await new Promise(r => setTimeout(r, 20));
+  pushUndo();
   state.audioBuffer = sliceBuffer(state.audioBuffer, start, end);
-  await refreshWaveform();
+  await refreshWaveform({ preserveCurve: true });
   busy.hide();
   toast('trimmed', 'ok');
 });
@@ -1379,7 +1435,7 @@ function sliceBuffer(buf, t0, t1) {
   return out;
 }
 
-async function refreshWaveform() {
+async function refreshWaveform(opts = {}) {
   if (!state.audioBuffer) return;
   const buf = state.audioBuffer;
   $('#fileDur').textContent = fmtTime(buf.duration, 2);
@@ -1387,8 +1443,22 @@ async function refreshWaveform() {
   $('#speedOrigDur').textContent = fmtTime(buf.duration, 2);
   $('#speedNewDur').textContent = fmtTime(buf.duration / parseFloat($('#speedRange').value), 2);
   state.region = { start: 0, end: buf.duration };
-  resetCurveDefault(buf.duration);
+  if (!opts.preserveCurve) resetCurveDefault();
+  else updateCurveStats();
   await mountWavesurfer(buf);
+  updatePending();
+}
+
+function pushUndo() {
+  if (!state.audioBuffer) return;
+  state.undoStack.push(cloneBuffer(state.audioBuffer));
+  if (state.undoStack.length > 16) state.undoStack.shift();
+}
+async function popUndo() {
+  if (!state.undoStack.length) { toast('nothing to undo'); return; }
+  state.audioBuffer = state.undoStack.pop();
+  await refreshWaveform({ preserveCurve: true });
+  toast('undone', 'ok');
 }
 
 const fadeCurveSeg = $('#fadeCurveSeg');
@@ -1460,10 +1530,11 @@ function disableOverlappingFades(changedId) {
     buf = sliceBuffer(buf, start, end);
   }
   buf = applyFadeAndBoost(buf, fi, fo, bi, bo, fadeCurve);
+  pushUndo();
   state.audioBuffer = buf;
   state.livePreview.fadeIn = 0; state.livePreview.fadeOut = 0; state.livePreview.boostIn = 0; state.livePreview.boostOut = 0;
   ['fadeInRange','fadeOutRange','boostInRange','boostOutRange'].forEach(id => { $('#'+id).value = 0; $('#'+id.replace('Range','Val')).textContent = '0.00 s'; });
-  await refreshWaveform();
+  await refreshWaveform({ preserveCurve: true });
   busy.hide();
   toast('faded', 'ok');
 });
@@ -1509,6 +1580,7 @@ liveVal('speedRange', v => v.toFixed(2) + '×');
 
   const semis = 12 * Math.log2(f);
   $('#speedPitchShift').textContent = state.pitchLock ? '0.0 st' : (semis >= 0 ? '+' : '') + semis.toFixed(1) + ' st';
+  updatePending();
 });
  $$('[data-speed]').forEach(b => b.addEventListener('click', () => {
   const v = parseFloat(b.dataset.speed);
@@ -1524,6 +1596,7 @@ liveVal('speedRange', v => v.toFixed(2) + '×');
   if (Math.abs(f - 1) < 0.001) { toast('speed unchanged', 'err'); return; }
   busy.show(state.pitchLock ? 'stretching (pitch-locked)…' : 'resampling…');
   await new Promise(r => setTimeout(r, 20));
+  pushUndo();
   state.audioBuffer = state.pitchLock
     ? timeStretch(state.audioBuffer, f, 0)
     : resampleSpeed(state.audioBuffer, f);
@@ -1531,9 +1604,10 @@ liveVal('speedRange', v => v.toFixed(2) + '×');
   $('#speedVal').textContent = '1.00×';
   state.livePreview.speed = 1;
   if (state.ws) state.ws.setPlaybackRate(1, state.livePreview.pitchLock);
-  await refreshWaveform();
+  await refreshWaveform({ preserveCurve: true });
   busy.hide();
   toast('speed applied', 'ok');
+  updatePending();
 });
 
 liveVal('pitchRange', v => (v >= 0 ? '+' : '') + v.toFixed(1) + ' st');
@@ -1546,116 +1620,161 @@ liveVal('pitchRange', v => (v >= 0 ? '+' : '') + v.toFixed(1) + ' st');
   $('#pitchRange').value = 0; $('#pitchRange').dispatchEvent(new Event('input'));
 });
 
- $('#pitchRange').addEventListener('change', async () => {
+async function bakePitch() {
   if (!state.audioBuffer) return;
-  const s = parseFloat($('#pitchRange').value);
-  if (Math.abs(s) < 0.05) return;
-  busy.show('rendering pitch shift...');
+  const semis = parseFloat($('#pitchRange').value);
+  if (Math.abs(semis) < 0.05) { toast('pitch unchanged', 'err'); return; }
+  busy.show('shifting pitch (tempo held)…');
   await new Promise(r => setTimeout(r, 20));
-  state.audioBuffer = timeStretch(state.audioBuffer, 1, s);
-  await refreshWaveform();
-  busy.hide();
-  toast('pitch applied', 'ok');
-  $('#pitchRange').value = 0;
-  $('#pitchVal').textContent = '+0.0 st';
-});
-
-function timeStretch(buf, tempoFactor, semitones) {
+  pushUndo();
   try {
-    const ST = window.soundtouch || window.SoundTouchJS || (typeof window.SoundTouch === 'object' && window.SoundTouch ? window.SoundTouch : {}) || {};
-    const SoundTouch = ST.SoundTouch || (typeof window.SoundTouch === 'function' ? window.SoundTouch : null);
-    const SimpleFilter = ST.SimpleFilter || (typeof window.SimpleFilter === 'function' ? window.SimpleFilter : null);
-    if (!SoundTouch || !SimpleFilter) {
-      console.warn('SoundTouch missing, falling back to resample');
-      return resampleSpeed(buf, tempoFactor);
-    }
-
-    const inLen = buf.length;
-    const ch = buf.numberOfChannels;
-    const sr = buf.sampleRate;
-    const interleaved = new Float32Array(inLen * 2);
-    const L = buf.getChannelData(0);
-    const R = ch > 1 ? buf.getChannelData(1) : L;
-    for (let i = 0; i < inLen; i++) {
-      interleaved[i * 2] = L[i];
-      interleaved[i * 2 + 1] = R[i];
-    }
-    let position = 0;
-    const source = {
-      extract: function (target, numFrames, _position) {
-        const start = position * 2;
-        const wanted = numFrames * 2;
-        const available = Math.max(0, interleaved.length - start);
-        const n = Math.min(wanted, available);
-        for (let i = 0; i < n; i++) target[i] = interleaved[start + i];
-        for (let i = n; i < wanted; i++) target[i] = 0;
-        const framesProduced = Math.floor(n / 2);
-        position += framesProduced;
-        return framesProduced;
-      }
-    };
-    const st = new SoundTouch();
-    st.tempo = tempoFactor;
-    st.pitchSemitones = semitones || 0;
-    const filter = new SimpleFilter(source, st);
-    const block = 4096;
-    const chunks = [];
-    const tmp = new Float32Array(block * 2);
-    while (true) {
-      const got = filter.extract(tmp, block);
-      if (got === 0) break;
-      chunks.push(tmp.slice(0, got * 2));
-    }
-    const newLen = chunks.reduce((s, c) => s + c.length, 0) / 2;
-    const out = getCtx().createBuffer(ch, Math.max(1, newLen), sr);
-    let outIdx = 0;
-    if (ch === 1) {
-      const c = out.getChannelData(0);
-      for (const chunk of chunks) {
-        for (let i = 0; i < chunk.length; i += 2) c[outIdx++] = (chunk[i] + chunk[i + 1]) * 0.5;
-      }
-    } else {
-      const cL = out.getChannelData(0), cR = out.getChannelData(1);
-      for (const chunk of chunks) {
-        for (let i = 0; i < chunk.length; i += 2) {
-          cL[outIdx] = chunk[i]; cR[outIdx] = chunk[i + 1]; outIdx++;
-        }
-      }
-    }
-    return out;
-  } catch (e) {
-    console.warn('timeStretch error, falling back:', e.message);
-    return resampleSpeed(buf, tempoFactor);
+    state.audioBuffer = pitchShiftPreserveTempo(state.audioBuffer, semis);
+    $('#pitchRange').value = 0;
+    $('#pitchVal').textContent = '+0.0 st';
+    state.livePreview.pitchPreview = 0;
+    await refreshWaveform({ preserveCurve: true });
+    toast('pitch applied · duration unchanged', 'ok');
+  } catch (err) {
+    console.error(err);
+    toast('pitch failed: ' + (err.message || err), 'err');
   }
+  busy.hide();
+  updatePending();
+}
+ $('#btnApplyPitch').addEventListener('click', bakePitch);
+ $('#pitchRange').addEventListener('input', () => updatePending());
+
+function hannWindow(n) {
+  const w = new Float32Array(n);
+  if (n <= 1) { w[0] = 1; return w; }
+  for (let i = 0; i < n; i++) w[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (n - 1));
+  return w;
 }
 
 function resampleSpeed(buf, factor) {
+  const f = Number(factor);
+  if (!isFinite(f) || f <= 0) return cloneBuffer(buf);
+  if (Math.abs(f - 1) < 1e-9) return cloneBuffer(buf);
   const ch = buf.numberOfChannels, sr = buf.sampleRate;
-  const newLen = Math.floor(buf.length / factor);
+  const newLen = Math.max(1, Math.round(buf.length / f));
   const out = getCtx().createBuffer(ch, newLen, sr);
   for (let c = 0; c < ch; c++) {
     const src = buf.getChannelData(c);
     const dst = out.getChannelData(c);
+    const last = buf.length - 1;
     for (let i = 0; i < newLen; i++) {
-      const t = i * factor;
-      const i0 = Math.floor(t), i1 = Math.min(buf.length - 1, i0 + 1);
+      const t = i * f;
+      const i0 = Math.floor(t);
+      const i1 = Math.min(last, i0 + 1);
       const a = t - i0;
-      dst[i] = src[i0] * (1 - a) + src[i1] * a;
+      dst[i] = src[Math.min(last, i0)] * (1 - a) + src[i1] * a;
     }
   }
   return out;
+}
+
+/* WSOLA time-stretch. speed > 1 => faster / shorter, pitch of grains stays put. */
+function wsolaStretch(buf, speed) {
+  const f = Number(speed);
+  if (!isFinite(f) || f <= 0) return cloneBuffer(buf);
+  if (Math.abs(f - 1) < 1e-6) return cloneBuffer(buf);
+  const sr = buf.sampleRate;
+  const ch = buf.numberOfChannels;
+  const inLen = buf.length;
+  const outLen = Math.max(1, Math.round(inLen / f));
+  const grain = Math.max(64, Math.round(0.030 * sr));
+  const hopOut = Math.max(32, Math.round(grain / 2));
+  const hopIn = hopOut * f;
+  const search = Math.max(16, Math.round(0.008 * sr));
+  const window = hannWindow(grain);
+  const srcs = [];
+  for (let c = 0; c < ch; c++) srcs.push(buf.getChannelData(c));
+  const out = getCtx().createBuffer(ch, outLen + grain, sr);
+  const dsts = [];
+  for (let c = 0; c < ch; c++) dsts.push(out.getChannelData(c));
+
+  const mix = srcs[0];
+  let inPos = 0;
+  let outPos = 0;
+  let prevStart = 0;
+  const maxStart = Math.max(0, inLen - grain);
+
+  while (outPos < outLen) {
+    let start = Math.round(inPos);
+    if (outPos > 0) {
+      const target = Math.round(prevStart + hopOut);
+      let best = start;
+      let bestCorr = -Infinity;
+      const lo = Math.max(0, start - search);
+      const hi = Math.min(maxStart, start + search);
+      for (let cand = lo; cand <= hi; cand += 2) {
+        let corr = 0;
+        const ref = Math.max(0, Math.min(maxStart, target));
+        for (let i = 0; i < grain; i += 4) {
+          corr += mix[ref + i] * mix[cand + i];
+        }
+        if (corr > bestCorr) { bestCorr = corr; best = cand; }
+      }
+      start = best;
+    }
+    start = Math.max(0, Math.min(maxStart, start));
+    for (let i = 0; i < grain; i++) {
+      const w = window[i];
+      const oi = outPos + i;
+      if (oi >= dsts[0].length) break;
+      const si = start + i;
+      for (let c = 0; c < ch; c++) {
+        dsts[c][oi] += (si < inLen ? srcs[c][si] : 0) * w;
+      }
+    }
+    prevStart = start;
+    inPos += hopIn;
+    outPos += hopOut;
+    if (inPos >= inLen && outPos >= outLen) break;
+    if (start >= maxStart && inPos > inLen) break;
+  }
+
+  const trimmed = getCtx().createBuffer(ch, outLen, sr);
+  for (let c = 0; c < ch; c++) trimmed.getChannelData(c).set(dsts[c].subarray(0, outLen));
+  return trimmed;
+}
+
+function timeStretch(buf, tempoFactor, semitones) {
+  const st = Number(semitones) || 0;
+  const tempo = Number(tempoFactor) || 1;
+  let out = buf;
+  if (Math.abs(st) >= 0.01) out = pitchShiftPreserveTempo(out, st);
+  if (Math.abs(tempo - 1) >= 1e-6) out = wsolaStretch(out, tempo);
+  return out;
+}
+
+/* Raise/lower pitch by `semitones` and time-stretch back so duration matches. */
+function pitchShiftPreserveTempo(buf, semitones) {
+  const st = Number(semitones) || 0;
+  if (Math.abs(st) < 0.01) return cloneBuffer(buf);
+  const ratio = Math.pow(2, st / 12);
+  // resampleSpeed(ratio) plays faster → higher pitch, shorter file
+  const pitched = resampleSpeed(buf, ratio);
+  // stretch back to original length (speed = 1/ratio)
+  return wsolaStretch(pitched, 1 / ratio);
 }
 
 const curveCanvas = $('#curveCanvas');
 const curveCtx = curveCanvas.getContext('2d');
 let curvePoints = [{ t: 0, v: 1 }, { t: 1, v: 1 }];
 let curveDragIdx = -1;
-const SPEED_MIN = 0.25, SPEED_MAX = 2.0;
+let curveSelIdx = 0;
+let curveInterp = 'linear';
+const SPEED_MIN = 0.25, SPEED_MAX = 4.0;
+const SNAP_SPEEDS = [0.25, 0.50, 0.75, 0.90, 1.00, 1.15, 1.30, 1.50, 2.00, 3.00, 4.00];
 
 function resetCurveDefault() {
   curvePoints = [{ t: 0, v: 1 }, { t: 1, v: 1 }];
+  curveSelIdx = 0;
   drawCurve();
   updateCurveStats();
+  syncCurvePointEdit();
+  updatePending();
 }
 
 function sizeCurveCanvas() {
@@ -1702,7 +1821,7 @@ function drawCurve(playheadProgress) {
   const elev = getCss('--elev') || '#1e2823';
 
   curveCtx.strokeStyle = elev; curveCtx.lineWidth = 1;
-  const guides = [0.25, 0.5, 1, 1.5, 2];
+  const guides = [0.25, 0.5, 0.75, 1, 1.15, 1.3, 2, 4];
   curveCtx.font = '11px JetBrains Mono, monospace';
   curveCtx.fillStyle = muted;
   for (const g of guides) {
@@ -1730,11 +1849,12 @@ function drawCurve(playheadProgress) {
 
   pts.forEach((p, i) => {
     const x = timeToX(p.t), y = speedToY(p.v);
+    const selected = curvePoints.indexOf(p) === curveSelIdx || i === curveSelIdx;
     curveCtx.beginPath();
-    curveCtx.arc(x, y, 7, 0, Math.PI * 2);
+    curveCtx.arc(x, y, selected ? 9 : 7, 0, Math.PI * 2);
     curveCtx.fillStyle = mintDeep;
     curveCtx.fill();
-    curveCtx.lineWidth = 2; curveCtx.strokeStyle = '#fff';
+    curveCtx.lineWidth = selected ? 3 : 2; curveCtx.strokeStyle = '#fff';
     curveCtx.stroke();
 
     curveCtx.fillStyle = mintDeep;
@@ -1770,17 +1890,39 @@ function drawCurve(playheadProgress) {
 }
 
 function evalCurveAt(pts, t) {
+  if (!pts.length) return 1;
   if (t <= pts[0].t) return pts[0].v;
   if (t >= pts[pts.length - 1].t) return pts[pts.length - 1].v;
   for (let i = 0; i < pts.length - 1; i++) {
     const a = pts[i], b = pts[i + 1];
     if (t >= a.t && t <= b.t) {
-      const u = (t - a.t) / (b.t - a.t);
-      const s = u * u * (3 - 2 * u);
+      const span = b.t - a.t;
+      const u = span <= 1e-12 ? 0 : (t - a.t) / span;
+      const s = curveInterp === 'smooth' ? u * u * (3 - 2 * u) : u;
       return a.v + (b.v - a.v) * s;
     }
   }
   return 1;
+}
+
+function snapSpeed(v) {
+  const y = speedToY(v);
+  let best = v, bestD = 7; // px
+  for (const g of SNAP_SPEEDS) {
+    const d = Math.abs(speedToY(g) - y);
+    if (d < bestD) { bestD = d; best = g; }
+  }
+  return best;
+}
+
+function syncCurvePointEdit() {
+  const meta = $('#curvePointMeta');
+  const inp = $('#curvePointVal');
+  if (!inp) return;
+  const p = curvePoints[curveSelIdx];
+  if (!p) { if (meta) meta.textContent = 'click a point, then type the exact speed'; return; }
+  inp.value = p.v.toFixed(2);
+  if (meta) meta.textContent = 't=' + Math.round(p.t * 100) + '%  ·  ' + p.v.toFixed(2) + '×';
 }
 
 function updateCurveStats() {
@@ -1819,14 +1961,17 @@ curveCanvas.addEventListener('pointerdown', (e) => {
   const hit = curveHitPoint(x, y);
   if (hit >= 0) {
     curveDragIdx = hit;
+    curveSelIdx = hit;
     curveCanvas.setPointerCapture(e.pointerId);
+    syncCurvePointEdit();
   } else {
-    const t = xToTime(x), v = yToSpeed(y);
+    const t = xToTime(x), v = snapSpeed(yToSpeed(y));
     curvePoints.push({ t, v });
     curvePoints.sort((a, b) => a.t - b.t);
     curveDragIdx = curvePoints.findIndex(p => p.t === t && p.v === v);
+    curveSelIdx = curveDragIdx;
     curveCanvas.setPointerCapture(e.pointerId);
-    drawCurve(); updateCurveStats();
+    drawCurve(); updateCurveStats(); syncCurvePointEdit(); updatePending();
   }
 });
 curveCanvas.addEventListener('pointermove', (e) => {
@@ -1842,28 +1987,55 @@ curveCanvas.addEventListener('pointermove', (e) => {
   p.v = yToSpeed(y);
   curvePoints.sort((a, b) => a.t - b.t);
   curveDragIdx = curvePoints.indexOf(p);
-  drawCurve(); updateCurveStats();
+  curveSelIdx = curveDragIdx;
+  drawCurve(); updateCurveStats(); syncCurvePointEdit();
 });
-curveCanvas.addEventListener('pointerup', () => { curveDragIdx = -1; });
+curveCanvas.addEventListener('pointerup', () => {
+  if (curveDragIdx >= 0 && curvePoints[curveDragIdx]) {
+    curvePoints[curveDragIdx].v = snapSpeed(curvePoints[curveDragIdx].v);
+    curveSelIdx = curveDragIdx;
+    drawCurve(); updateCurveStats(); syncCurvePointEdit(); updatePending();
+  }
+  curveDragIdx = -1;
+});
 curveCanvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   const r = curveCanvas.getBoundingClientRect();
   const hit = curveHitPoint(e.clientX - r.left, e.clientY - r.top);
   if (hit > 0 && hit < curvePoints.length - 1) {
     curvePoints.splice(hit, 1);
-    drawCurve(); updateCurveStats();
+    if (curveSelIdx >= curvePoints.length) curveSelIdx = curvePoints.length - 1;
+    drawCurve(); updateCurveStats(); syncCurvePointEdit(); updatePending();
   }
 });
  $('#btnCurveReset').addEventListener('click', () => resetCurveDefault());
+const curveInterpSeg = $('#curveInterpSeg');
+if (curveInterpSeg) curveInterpSeg.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-interp]');
+  if (!b) return;
+  $$('button', curveInterpSeg).forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  curveInterp = b.dataset.interp;
+  drawCurve(); updateCurveStats(); updatePending();
+});
+ $('#curvePointVal').addEventListener('change', () => {
+  const p = curvePoints[curveSelIdx];
+  if (!p) return;
+  let v = parseFloat($('#curvePointVal').value);
+  if (!isFinite(v)) return;
+  p.v = Math.max(SPEED_MIN, Math.min(SPEED_MAX, v));
+  drawCurve(); updateCurveStats(); syncCurvePointEdit(); updatePending();
+});
 
  $('#btnApplyCurve').addEventListener('click', async () => {
   if (!state.audioBuffer) return;
   const pts = curvePoints.slice().sort((a, b) => a.t - b.t);
-  const flat = pts.every(p => Math.abs(p.v - 1) < 0.005);
+  const flat = pts.every(p => Math.abs(p.v - 1) < 0.0005);
   if (flat) { toast('curve is flat at 1× — nothing to do', 'err'); return; }
   const preserve = state.livePreview.pitchLock;
   busy.show('applying curve…');
   await new Promise(r => setTimeout(r, 20));
+  pushUndo();
   state.audioBuffer = await applyCurveSpeed(state.audioBuffer, pts, preserve);
   await refreshWaveform();
   busy.hide();
@@ -1871,21 +2043,96 @@ curveCanvas.addEventListener('contextmenu', (e) => {
 });
 
 async function applyCurveSpeed(buf, pts, preservePitch) {
-  const SEG = 0.05;
-  const dur = buf.duration;
-  const nSeg = Math.max(2, Math.ceil(dur / SEG));
-  const chunks = [];
-  for (let i = 0; i < nSeg; i++) {
-    const t0 = (i / nSeg) * dur;
-    const t1 = ((i + 1) / nSeg) * dur;
-    const midNorm = ((i + 0.5) / nSeg);
-    const v = evalCurveAt(pts, midNorm);
-    const slice = sliceBuffer(buf, t0, t1);
-    const stretched = preservePitch ? timeStretch(slice, v, 0) : resampleSpeed(slice, v);
-    chunks.push(stretched);
-    if (i % 20 === 0) busy.prog(i / nSeg, 'stretching segment ' + (i + 1) + '/' + nSeg);
+  if (preservePitch) return applyCurveWsola(buf, pts);
+  return applyCurveResample(buf, pts);
+}
+
+/* Sample-accurate variable-rate resample. A flat 1.00× curve is a bit-identical copy. */
+function applyCurveResample(buf, pts) {
+  const ch = buf.numberOfChannels, sr = buf.sampleRate, inLen = buf.length;
+  let est = 0;
+  const N = 8000;
+  for (let i = 0; i < N; i++) {
+    const v = Math.max(SPEED_MIN, evalCurveAt(pts, (i + 0.5) / N));
+    est += (inLen / N) / v;
   }
-  return concatBuffers(chunks);
+  const outLen = Math.max(1, Math.round(est));
+  const out = getCtx().createBuffer(ch, outLen, sr);
+  const srcs = [];
+  for (let c = 0; c < ch; c++) srcs.push(buf.getChannelData(c));
+  const dsts = [];
+  for (let c = 0; c < ch; c++) dsts.push(out.getChannelData(c));
+  const last = inLen - 1;
+  let ip = 0;
+  let written = 0;
+  for (let o = 0; o < outLen && ip < last; o++) {
+    const spd = Math.max(SPEED_MIN, Math.min(SPEED_MAX, evalCurveAt(pts, ip / inLen)));
+    const i0 = Math.floor(ip);
+    const i1 = Math.min(last, i0 + 1);
+    const a = ip - i0;
+    for (let c = 0; c < ch; c++) dsts[c][o] = srcs[c][i0] * (1 - a) + srcs[c][i1] * a;
+    ip += spd;
+    written = o + 1;
+    if (o % 20000 === 0) busy.prog(o / outLen, 'resampling curve…');
+  }
+  if (written === outLen) return out;
+  const trimmed = getCtx().createBuffer(ch, Math.max(1, written), sr);
+  for (let c = 0; c < ch; c++) trimmed.getChannelData(c).set(dsts[c].subarray(0, written));
+  return trimmed;
+}
+
+/* Pitch-locked curve: WSOLA grains whose hop follows the curve. */
+function applyCurveWsola(buf, pts) {
+  const sr = buf.sampleRate, ch = buf.numberOfChannels, inLen = buf.length;
+  let durMul = 0;
+  const N = 4000;
+  for (let i = 0; i < N; i++) durMul += 1 / Math.max(SPEED_MIN, evalCurveAt(pts, (i + 0.5) / N));
+  durMul /= N;
+  const outLen = Math.max(1, Math.round(inLen * durMul));
+  const grain = Math.max(64, Math.round(0.030 * sr));
+  const hopOut = Math.max(32, Math.round(grain / 2));
+  const search = Math.max(16, Math.round(0.008 * sr));
+  const window = hannWindow(grain);
+  const srcs = [];
+  for (let c = 0; c < ch; c++) srcs.push(buf.getChannelData(c));
+  const out = getCtx().createBuffer(ch, outLen + grain, sr);
+  const dsts = [];
+  for (let c = 0; c < ch; c++) dsts.push(out.getChannelData(c));
+  const mix = srcs[0];
+  const maxStart = Math.max(0, inLen - grain);
+  let inPos = 0, outPos = 0, prevStart = 0;
+  while (outPos < outLen && inPos < inLen) {
+    const spd = Math.max(SPEED_MIN, Math.min(SPEED_MAX, evalCurveAt(pts, Math.min(1, inPos / inLen))));
+    let start = Math.round(inPos);
+    if (outPos > 0) {
+      const target = Math.round(prevStart + hopOut);
+      let best = start, bestCorr = -Infinity;
+      const lo = Math.max(0, start - search);
+      const hi = Math.min(maxStart, start + search);
+      for (let cand = lo; cand <= hi; cand += 2) {
+        let corr = 0;
+        const ref = Math.max(0, Math.min(maxStart, target));
+        for (let i = 0; i < grain; i += 4) corr += mix[ref + i] * mix[cand + i];
+        if (corr > bestCorr) { bestCorr = corr; best = cand; }
+      }
+      start = best;
+    }
+    start = Math.max(0, Math.min(maxStart, start));
+    for (let i = 0; i < grain; i++) {
+      const oi = outPos + i;
+      if (oi >= dsts[0].length) break;
+      const w = window[i];
+      const si = start + i;
+      for (let c = 0; c < ch; c++) dsts[c][oi] += (si < inLen ? srcs[c][si] : 0) * w;
+    }
+    prevStart = start;
+    inPos += hopOut * spd;
+    outPos += hopOut;
+    if (outPos % (hopOut * 40) === 0) busy.prog(outPos / outLen, 'pitch-locked curve…');
+  }
+  const trimmed = getCtx().createBuffer(ch, outLen, sr);
+  for (let c = 0; c < ch; c++) trimmed.getChannelData(c).set(dsts[c].subarray(0, outLen));
+  return trimmed;
 }
 
 function concatBuffers(chunks) {
@@ -2245,10 +2492,53 @@ async function processExport() {
   }
 }));
 
+function isCurveFlat() {
+  return curvePoints.every(p => Math.abs(p.v - 1) < 0.0005);
+}
+function updatePending() {
+  const bar = $('#pendingBar');
+  if (!bar) return;
+  const chips = [];
+  const { start, end } = state.region;
+  const dur = state.audioBuffer ? state.audioBuffer.duration : 0;
+  if (dur > 0 && (start > 0.02 || end < dur - 0.02)) chips.push('trim ' + fmtTime(end - start, 2));
+  const fi = parseFloat($('#fadeInRange')?.value) || 0;
+  const fo = parseFloat($('#fadeOutRange')?.value) || 0;
+  const bi = parseFloat($('#boostInRange')?.value) || 0;
+  const bo = parseFloat($('#boostOutRange')?.value) || 0;
+  const sS = parseFloat($('#sliceStart')?.value) || 0;
+  const sE = parseFloat($('#sliceEnd')?.value) || 0;
+  if (fi || fo || bi || bo || sS || sE) chips.push('fade/slice');
+  const spd = parseFloat($('#speedRange')?.value) || 1;
+  if (Math.abs(spd - 1) > 0.001) chips.push(spd.toFixed(2) + '× speed');
+  if (!isCurveFlat()) chips.push('speed curve');
+  const pit = parseFloat($('#pitchRange')?.value) || 0;
+  if (Math.abs(pit) >= 0.05) chips.push((pit >= 0 ? '+' : '') + pit.toFixed(1) + ' st');
+  bar.querySelectorAll('.chip').forEach(el => el.remove());
+  if (!chips.length) {
+    const n = document.createElement('span');
+    n.className = 'chip'; n.id = 'pendingNone'; n.textContent = 'nothing pending';
+    bar.appendChild(n);
+  } else {
+    chips.forEach(t => {
+      const n = document.createElement('span');
+      n.className = 'chip warn'; n.textContent = t;
+      bar.appendChild(n);
+    });
+  }
+}
+
 window.addEventListener('keydown', (e) => {
   if (e.target.matches('input, textarea')) return;
   if (e.code === 'Space') { e.preventDefault(); $('#btnPlay').click(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); popUndo(); }
 });
+['fadeInRange','fadeOutRange','boostInRange','boostOutRange','sliceStart','sliceEnd'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updatePending);
+});
+const _updTrim = updateTrimDisplay;
+updateTrimDisplay = function() { _updTrim(); updatePending(); };
 
 function drawFadeOverlay() {
   const overlay = $('#fadeOverlay');
@@ -2287,27 +2577,18 @@ function drawFadeOverlay() {
 }
 
 function applyPitchPreview() {
+  // Preview must not change tempo. Real pitch is baked on Save.
+  // (HTML playbackRate always couples pitch and speed.)
   if (!state.ws) return;
   const el = PreviewEngine.attachedTo;
-  if (!el) return;
-  el.preservesPitch = state.livePreview.pitchLock;
-  el.mozPreservesPitch = state.livePreview.pitchLock;
-  el.webkitPreservesPitch = state.livePreview.pitchLock;
+  if (el) {
+    el.preservesPitch = state.livePreview.pitchLock;
+    el.mozPreservesPitch = state.livePreview.pitchLock;
+    el.webkitPreservesPitch = state.livePreview.pitchLock;
+  }
   state.ws.setPlaybackRate(state.livePreview.speed || 1, state.livePreview.pitchLock);
 }
-function clearPitchPreview() {
-  if (!state.ws) return;
-  const el = PreviewEngine.attachedTo;
-  if (!el) return;
-  el.preservesPitch = state.livePreview.pitchLock;
-  el.mozPreservesPitch = state.livePreview.pitchLock;
-  el.webkitPreservesPitch = state.livePreview.pitchLock;
-  state.ws.setPlaybackRate(state.livePreview.speed || 1, state.livePreview.pitchLock);
-}
- $('#pitchRange').addEventListener('input', () => {
-  const activeTab = document.querySelector('.tab.active')?.dataset?.tab;
-  if (activeTab === 'pitch') applyPitchPreview();
-});
+function clearPitchPreview() { applyPitchPreview(); }
 
 (function setupDraggablePlayhead() {
   const stage = $('#waveStage');
@@ -2403,8 +2684,10 @@ mountWavesurfer = async function(buf) {
 
 if (state.audioBuffer) { drawFadeOverlay(); }
 
-requestAnimationFrame(() => { sizeCurveCanvas(); drawCurve(); updateCurveStats(); });
+requestAnimationFrame(() => { sizeCurveCanvas(); drawCurve(); updateCurveStats(); updatePending(); });
 </script>
 
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
+
 </html>
