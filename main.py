@@ -1007,6 +1007,14 @@ def _render_renewal_page(session_token, error=None, status_code=200):
     )
     response.headers["Cache-Control"] = "no-store"
     response.headers["Referrer-Policy"] = "no-referrer"
+    response.set_cookie(
+        "vadrifts_renewal",
+        session_token,
+        max_age=6 * 60 * 60,
+        httponly=True,
+        samesite="Lax",
+        path="/",
+    )
     return response
 
 
