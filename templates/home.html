@@ -2040,7 +2040,13 @@
     .toast {
       position: fixed;
       bottom: 30px; left: 50%;
-      transform: translateX(-50%) translateY(140%);
+      /* hidden state: a % translate is relative to the toast's OWN height, so an
+         empty toast (30px tall) only moved 42px and still poked above the fold.
+         opacity + visibility guarantee it's actually gone until .is-visible. */
+      transform: translateX(-50%) translateY(24px);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
       padding: 14px 22px;
       background: rgba(15, 5, 25, 0.95);
       backdrop-filter: blur(20px);
@@ -2051,11 +2057,16 @@
       font-weight: 500;
       box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
       z-index: 999;
-      transition: transform 0.4s cubic-bezier(.2,.8,.2,1);
+      transition: transform 0.4s cubic-bezier(.2,.8,.2,1), opacity 0.3s ease, visibility 0.3s;
       max-width: 90vw;
       text-align: center;
     }
-    .toast.is-visible { transform: translateX(-50%) translateY(0); }
+    .toast.is-visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
     .latest-drop-pill {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 7px 16px;
@@ -2701,7 +2712,7 @@
 							Read Docs
 							<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
 						</a>
-						<a href="https://github.com/vqmpjayZ/laboratory" target="_blank" rel="noopener" class="hs-btn hs-btn-secondary">
+						<a href="https://github.com/skkeletonn/laboratory" target="_blank" rel="noopener" class="hs-btn hs-btn-secondary">
 							<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.57.1.78-.25.78-.55v-2.05c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.47.11-3.07 0 0 .97-.31 3.18 1.18.92-.26 1.91-.39 2.9-.39s1.98.13 2.9.39c2.21-1.49 3.18-1.18 3.18-1.18.62 1.6.23 2.78.11 3.07.74.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.41-5.26 5.69.41.36.78 1.06.78 2.14v3.18c0 .31.21.66.79.55C20.21 21.39 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
 							View Source
 						</a>
@@ -2783,9 +2794,9 @@
 				<div class="commits-header">
 					<div class="commits-header-left">
 						<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.57.1.78-.25.78-.55v-2.05c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.47.11-3.07 0 0 .97-.31 3.18 1.18.92-.26 1.91-.39 2.9-.39s1.98.13 2.9.39c2.21-1.49 3.18-1.18 3.18-1.18.62 1.6.23 2.78.11 3.07.74.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.41-5.26 5.69.41.36.78 1.06.78 2.14v3.18c0 .31.21.66.79.55C20.21 21.39 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
-						<span>@vqmpjayZ &middot; all repos</span>
+						<span>@skkeletonn &middot; all repos</span>
 					</div>
-					<a href="https://github.com/vqmpjayZ?tab=repositories" target="_blank" rel="noopener" class="commits-header-link">View all →</a>
+					<a href="https://github.com/skkeletonn?tab=repositories" target="_blank" rel="noopener" class="commits-header-link">View all →</a>
 				</div>
 				<ul class="commits-list" id="commitsList">
 					<li class="commit-row commit-loading">
@@ -2844,7 +2855,7 @@
 								</div>
 								<div class="dm-msg">
 									<div class="dm-avatar">
-										<img src="https://i.imgur.com/ePueN25.png" alt="">
+										<img src="https://i.imgur.com/8yj2VvW.jpeg" alt="">
 										<span class="dm-online"></span>
 									</div>
 									<div class="dm-body">
@@ -2868,7 +2879,7 @@
 							</div>
 							<div class="suggest-alt">
 								Or
-								<a href="https://github.com/vqmpjayZ/Vadrifts/issues/new" target="_blank" rel="noopener">open a GitHub issue</a>
+								<a href="https://github.com/skkeletonn/website/issues/new" target="_blank" rel="noopener">open a GitHub issue</a>
 							</div>
 						</form>
 					</div>
@@ -2946,7 +2957,7 @@
 							</div>
 						</div>
 						<div class="faq-answer">
-							<p>Use the suggestion box right above &mdash; it pings us in Discord directly. For anything code-related you can also <a href="https://github.com/vqmpjayZ/Vadrifts/issues/new" target="_blank" class="faq-link">open a GitHub issue</a>. We read everything; we just can't always reply the same hour.</p>
+							<p>Use the suggestion box right above &mdash; it pings us in Discord directly. For anything code-related you can also <a href="https://github.com/skkeletonn/website/issues/new" target="_blank" class="faq-link">open a GitHub issue</a>. We read everything; we just can't always reply the same hour.</p>
 						</div>
 					</div>
 				</div>
@@ -2986,7 +2997,7 @@
         { id: 'scripts',  value: 4,              label: 'Projects',   suffix: '+', useCommas: false,
           tip: 'Browse everything we ship',         href: '/projects',  external: false },
         { id: 'executor', value: 100,            label: 'Open Source', suffix: '%', useCommas: false,
-          tip: 'Every line on GitHub — click to peek', href: 'https://github.com/vqmpjayZ/Vadrifts', external: true }
+          tip: 'Every line on GitHub — click to peek', href: 'https://github.com/skkeletonn/website', external: true }
       ],
       showcasers: [
         'MastersMZ', '1F0YT', 'ReverseScripts', 'Sr_LDS', 'Ras-Scripts'
@@ -3411,55 +3422,80 @@ class AutoShowcasersManager {
 		        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 		        .replace(/"/g, '&quot;');
 		    }
-		    fetch('https://api.github.com/users/vqmpjayZ/events/public?per_page=30')
-		      .then(function (r) { if (!r.ok) throw new Error('gh ' + r.status); return r.json(); })
-		      .then(function (events) {
-		        var rows = [];
-		        for (var i = 0; i < events.length && rows.length < 6; i++) {
-		          var ev = events[i];
-		          if (ev.type !== 'PushEvent' || !ev.payload || !ev.payload.commits) continue;
-		          var repo = ev.repo && ev.repo.name ? ev.repo.name : '';
-		          var when = ev.created_at;
-		          var commits = ev.payload.commits.slice().reverse();
-		          for (var j = 0; j < commits.length && rows.length < 6; j++) {
-		            var c = commits[j];
-		            var msg = (c.message || '').trim();
-		            var split = msg.split(/\n\s*\n/);
-		            var headline = (split[0] || '').split('\n')[0];
-		            var body = split.slice(1).join('\n\n').trim();
-		            rows.push({
-		              sha: (c.sha || '').slice(0, 7),
-		              url: 'https://github.com/' + repo + '/commit/' + c.sha,
-		              repo: repo,
-		              repoShort: (repo.split('/')[1] || repo),
-		              headline: headline,
-		              body: body,
-		              when: when
-		            });
-		          }
-		        }
-		        if (rows.length === 0) {
-		          list.innerHTML = '<li class="commit-row" style="grid-template-columns:1fr;text-align:center;color:#888;justify-content:center;">No public pushes recently. <a href="https://github.com/vqmpjayZ" target="_blank" style="color:#c77dff;">Visit GitHub →</a></li>';
-		          return;
-		        }
-		        list.innerHTML = rows.map(function (r) {
-		          return '<a class="commit-row" href="' + esc(r.url) + '" target="_blank" rel="noopener">' +
-		            '<span class="commit-sha">' + esc(r.sha) + '</span>' +
-		            '<div class="commit-main">' +
-		              '<div class="commit-headline" title="' + esc(r.headline) + '">' + esc(r.headline) + '</div>' +
-		              (r.body ? '<div class="commit-body">' + esc(r.body) + '</div>' : '') +
-		              '<div class="commit-repo">' +
-		                '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>' +
-		                esc(r.repoShort) +
-		              '</div>' +
+		    /* GitHub's public *events* feed no longer ships payload.commits, so the old
+		       code always fell through to "No public pushes recently". Instead: grab the
+		       most recently pushed repos, then the latest commits from each. Cached in
+		       sessionStorage for 10 min so we don't burn the 60 req/hour anon rate limit. */
+		    var GH_USER = 'skkeletonn';
+		    var GH_CACHE_KEY = 'vadrifts_commits_v1';
+		    var GH_CACHE_TTL = 10 * 60 * 1000;
+		    var GH_REPOS = 3;
+		    var GH_ROWS = 6;
+
+		    function ghEmpty() {
+		      list.innerHTML = '<li class="commit-row" style="grid-template-columns:1fr;text-align:center;color:#888;justify-content:center;">No public pushes recently. <a href="https://github.com/' + GH_USER + '" target="_blank" style="color:#c77dff;">Visit GitHub →</a></li>';
+		    }
+		    function ghFail() {
+		      list.innerHTML = '<li class="commit-row" style="grid-template-columns:1fr;text-align:center;color:#888;justify-content:center;">Could not load commits. <a href="https://github.com/' + GH_USER + '" target="_blank" style="color:#c77dff;">View on GitHub →</a></li>';
+		    }
+		    function ghRender(rows) {
+		      if (!rows || !rows.length) { ghEmpty(); return; }
+		      list.innerHTML = rows.map(function (r) {
+		        return '<a class="commit-row" href="' + esc(r.url) + '" target="_blank" rel="noopener">' +
+		          '<span class="commit-sha">' + esc(r.sha) + '</span>' +
+		          '<div class="commit-main">' +
+		            '<div class="commit-headline" title="' + esc(r.headline) + '">' + esc(r.headline) + '</div>' +
+		            (r.body ? '<div class="commit-body">' + esc(r.body) + '</div>' : '') +
+		            '<div class="commit-repo">' +
+		              '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>' +
+		              esc(r.repoShort) +
 		            '</div>' +
-		            '<span class="commit-time">' + (r.when ? esc(timeAgo(r.when)) : '') + '</span>' +
-		          '</a>';
-		        }).join('');
+		          '</div>' +
+		          '<span class="commit-time">' + (r.when ? esc(timeAgo(r.when)) : '') + '</span>' +
+		        '</a>';
+		      }).join('');
+		    }
+		    function ghJson(url) {
+		      return fetch(url, { headers: { 'Accept': 'application/vnd.github+json' } })
+		        .then(function (r) { if (!r.ok) throw new Error('gh ' + r.status); return r.json(); });
+		    }
+
+		    try {
+		      var cached = JSON.parse(sessionStorage.getItem(GH_CACHE_KEY) || 'null');
+		      if (cached && Date.now() - cached.t < GH_CACHE_TTL) { ghRender(cached.rows); return; }
+		    } catch (_) {}
+
+		    ghJson('https://api.github.com/users/' + GH_USER + '/repos?sort=pushed&direction=desc&per_page=' + GH_REPOS + '&type=owner')
+		      .then(function (repos) {
+		        if (!Array.isArray(repos) || !repos.length) return [];
+		        return Promise.all(repos.map(function (repo) {
+		          return ghJson('https://api.github.com/repos/' + repo.full_name + '/commits?per_page=' + GH_ROWS)
+		            .then(function (commits) {
+		              return (Array.isArray(commits) ? commits : []).map(function (c) {
+		                var msg = ((c.commit && c.commit.message) || '').trim();
+		                var split = msg.split(/\n\s*\n/);
+		                return {
+		                  sha: (c.sha || '').slice(0, 7),
+		                  url: c.html_url || ('https://github.com/' + repo.full_name + '/commit/' + c.sha),
+		                  repoShort: repo.name,
+		                  headline: (split[0] || '').split('\n')[0],
+		                  body: split.slice(1).join('\n\n').trim(),
+		                  when: (c.commit && c.commit.author && c.commit.author.date) || null
+		                };
+		              });
+		            })
+		            .catch(function () { return []; });
+		        }));
 		      })
-		      .catch(function () {
-		        list.innerHTML = '<li class="commit-row" style="grid-template-columns:1fr;text-align:center;color:#888;justify-content:center;">Could not load commits. <a href="https://github.com/vqmpjayZ" target="_blank" style="color:#c77dff;">View on GitHub →</a></li>';
-		      });
+		      .then(function (groups) {
+		        var rows = [].concat.apply([], groups || [])
+		          .filter(function (r) { return r.headline; })
+		          .sort(function (a, b) { return new Date(b.when) - new Date(a.when); })
+		          .slice(0, GH_ROWS);
+		        try { sessionStorage.setItem(GH_CACHE_KEY, JSON.stringify({ t: Date.now(), rows: rows })); } catch (_) {}
+		        ghRender(rows);
+		      })
+		      .catch(ghFail);
 		  })();
 
 		  (function () {
@@ -3701,5 +3737,5 @@ class AutoShowcasersManager {
 		</script>
 
 
-	<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a29a9eb16b312a09',t:'MTc4NjQ4Njc0NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+	<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a29a9eb16b312a09',t:'MTc4NjQ4Njc0NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f4577aff6c5bac',t:'MTc4NzQyNzU0Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
