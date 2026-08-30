@@ -255,7 +255,22 @@ def get_profile_by_name(guild_id, name):
         return None
 
 
-def create_session(guild_id, discord_id, discord_name, profile_id):
+def _session_purpose_query(purpose):
+    purpose = str(purpose or "key").strip().lower() or "key"
+    # Sessions created before purposes existed are normal key sessions.
+    return {"$in": ["key", None]} if purpose == "key" else purpose
+
+
+def create_session(
+    guild_id,
+    discord_id,
+    discord_name,
+    profile_id,
+    purpose="key",
+    allowed_providers=None,
+    min_completion_seconds=None,
+    require_referrer=False,
+):
     if guild_sessions_collection is None:
         return None
     renewal = get_renewal_status(guild_id)
@@ -263,12 +278,32 @@ def create_session(guild_id, discord_id, discord_name, profile_id):
         logger.info("Blocked verification session creation for unrenewed guild %s", guild_id)
         return None
     try:
-        guild_sessions_collection.delete_many({
+        purpose = str(purpose or "key").strip().lower() or "key"
+        delete_query = {
             "guild_id": str(guild_id),
             "discord_id": str(discord_id),
             "profile_id": profile_id,
-            "completed": False
-        })
+            "purpose": _session_purpose_query(purpose),
+            "completed": False,
+        }
+        guild_sessions_collection.delete_many(delete_query)
+
+        providers = None
+        if allowed_providers is not None:
+            providers = [
+                provider for provider in (str(p).strip().lower() for p in allowed_providers)
+                if provider in {"workink", "lootlabs", "linkvertise"}
+            ]
+            providers = list(dict.fromkeys(providers))
+            if not providers:
+                return None
+
+        minimum = MIN_COMPLETION_SECONDS
+        if min_completion_seconds is not None:
+            try:
+                minimum = min(max(int(min_completion_seconds), MIN_COMPLETION_SECONDS), 900)
+            except (TypeError, ValueError):
+                minimum = MIN_COMPLETION_SECONDS
 
         token = secrets.token_urlsafe(32)
         now = time.time()
@@ -278,14 +313,23 @@ def create_session(guild_id, discord_id, discord_name, profile_id):
             "discord_id": str(discord_id),
             "discord_name": discord_name,
             "profile_id": profile_id,
+            "purpose": purpose,
+            "allowed_providers": providers,
+            "min_completion_seconds": minimum,
+            "require_referrer": bool(require_referrer),
             "ip": None,
             "timer_started": False,
             "timer_started_at": None,
+            "provider_used": None,
+            "provider_started_at": None,
+            "provider_redirect_url": None,
+            "completion_proof_hash": None,
+            "lootlabs_antibypass": False,
             "completed": False,
             "completed_at": None,
             "key_claimed": False,
             "created_at": now,
-            "expires_at": now + 1800
+            "expires_at": now + 1800,
         }
         guild_sessions_collection.insert_one(session)
         return token
@@ -326,19 +370,72 @@ def update_session(token, updates):
         return False
 
 
-def find_session_by_ip_and_profile(ip, guild_id, profile_id):
+def bind_session_ip(token, client_ip):
+    """Bind once to an IP, allowing idempotent requests from that same IP."""
+    if guild_sessions_collection is None or not client_ip:
+        return False
+    try:
+        result = guild_sessions_collection.update_one(
+            {
+                "_id": token,
+                "expires_at": {"$gt": time.time()},
+                "$or": [{"ip": None}, {"ip": client_ip}],
+            },
+            {"$set": {"ip": client_ip}},
+        )
+        return bool(result.matched_count)
+    except Exception as e:
+        logger.error(f"Failed to bind verification session IP: {e}")
+        return False
+
+
+def save_session_provider_redirect(token, updates):
+    """Atomically save the first protected provider URL and return the winner."""
     if guild_sessions_collection is None:
         return None
     try:
-        doc = guild_sessions_collection.find_one(
+        result = guild_sessions_collection.update_one(
             {
-                "guild_id": str(guild_id),
-                "profile_id": profile_id,
-                "ip": ip,
+                "_id": token,
                 "completed": False,
-                "timer_started": True,
-                "expires_at": {"$gt": time.time()}
+                "expires_at": {"$gt": time.time()},
+                "$or": [
+                    {"provider_redirect_url": {"$exists": False}},
+                    {"provider_redirect_url": None},
+                ],
             },
+            {"$set": updates},
+        )
+        if result.modified_count:
+            return updates.get("provider_redirect_url")
+        doc = guild_sessions_collection.find_one({"_id": token})
+        if (doc and not doc.get("completed")
+                and doc.get("expires_at", 0) > time.time()
+                and doc.get("completion_proof_hash")
+                and doc.get("lootlabs_antibypass") is True):
+            return doc.get("provider_redirect_url")
+        return None
+    except Exception as e:
+        logger.error(f"Failed to save protected provider redirect: {e}")
+        return None
+
+
+def find_session_by_ip_and_profile(ip, guild_id, profile_id, purpose=None):
+    if guild_sessions_collection is None:
+        return None
+    try:
+        query = {
+            "guild_id": str(guild_id),
+            "profile_id": profile_id,
+            "ip": ip,
+            "completed": False,
+            "timer_started": True,
+            "expires_at": {"$gt": time.time()}
+        }
+        if purpose:
+            query["purpose"] = _session_purpose_query(purpose)
+        doc = guild_sessions_collection.find_one(
+            query,
             sort=[("created_at", -1)]
         )
         if doc:
@@ -351,20 +448,23 @@ def find_session_by_ip_and_profile(ip, guild_id, profile_id):
         return None
 
 
-def get_pending_session(discord_id, guild_id, profile_id):
+def get_pending_session(discord_id, guild_id, profile_id, purpose=None):
+    """Return the newest completed, unclaimed session for this user/profile."""
     if guild_sessions_collection is None:
         return None
     try:
+        query = {
+            "guild_id": str(guild_id),
+            "discord_id": str(discord_id),
+            "profile_id": profile_id,
+            "completed": True,
+            "key_claimed": False,
+            "expires_at": {"$gt": time.time()},
+        }
+        if purpose is not None:
+            query["purpose"] = _session_purpose_query(purpose)
         doc = guild_sessions_collection.find_one(
-            {
-                "guild_id": str(guild_id),
-                "discord_id": str(discord_id),
-                "profile_id": profile_id,
-                "completed": True,
-                "key_claimed": False,
-                "expires_at": {"$gt": time.time()}
-            },
-            sort=[("completed_at", -1)]
+            query, sort=[("completed_at", -1)]
         )
         if doc:
             session = {k: v for k, v in doc.items() if k != "_id"}
@@ -373,6 +473,70 @@ def get_pending_session(discord_id, guild_id, profile_id):
         return None
     except Exception as e:
         logger.error(f"Failed to get pending session: {e}")
+        return None
+
+
+def get_user_session(
+    discord_id,
+    guild_id,
+    profile_id,
+    purpose=None,
+    completed=None,
+    claimed=None,
+):
+    """Return the newest live session matching the supplied server-side fields."""
+    if guild_sessions_collection is None:
+        return None
+    try:
+        query = {
+            "guild_id": str(guild_id),
+            "discord_id": str(discord_id),
+            "profile_id": profile_id,
+            "expires_at": {"$gt": time.time()},
+        }
+        if purpose is not None:
+            query["purpose"] = _session_purpose_query(purpose)
+        if completed is not None:
+            query["completed"] = bool(completed)
+        if claimed is not None:
+            query["key_claimed"] = bool(claimed)
+        doc = guild_sessions_collection.find_one(
+            query, sort=[("created_at", -1)]
+        )
+        if not doc:
+            return None
+        session = {k: v for k, v in doc.items() if k != "_id"}
+        session["token"] = doc["_id"]
+        return session
+    except Exception as e:
+        logger.error(f"Failed to find user verification session: {e}")
+        return None
+
+
+def claim_completed_session(token, discord_id, purpose="key"):
+    """Atomically mark one completed session claimed and return its old document."""
+    if guild_sessions_collection is None:
+        return None
+    try:
+        now = time.time()
+        doc = guild_sessions_collection.find_one_and_update(
+            {
+                "_id": token,
+                "discord_id": str(discord_id),
+                "purpose": _session_purpose_query(purpose),
+                "completed": True,
+                "key_claimed": False,
+                "expires_at": {"$gt": now},
+            },
+            {"$set": {"key_claimed": True, "claimed_at": now}},
+        )
+        if not doc:
+            return None
+        session = {k: v for k, v in doc.items() if k != "_id"}
+        session["token"] = doc["_id"]
+        return session
+    except Exception as e:
+        logger.error(f"Failed to claim verification session: {e}")
         return None
 
 
