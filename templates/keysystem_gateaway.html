@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Key System - {{GUILD_NAME}}</title>
+  <title>{{FLOW_TITLE}} - {{GUILD_NAME}}</title>
   <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -483,8 +483,8 @@
         <div class="logo-wrapper">
           <i data-lucide="key-round"></i>
         </div>
-        <h1>Key Verification</h1>
-        <p>Complete a task for <span class="guild-name">{{GUILD_NAME}}</span></p>
+        <h1>{{FLOW_TITLE}}</h1>
+        <p>{{FLOW_SUBTITLE}}</p>
       </div>
 
       <div class="step-indicator">
@@ -512,9 +512,9 @@
           <span>How it works</span>
         </div>
         <ol class="instruction-steps">
-          <li>Choose a verification provider below</li>
+          <li>{{PROVIDER_INSTRUCTION}}</li>
           <li>Complete the quick task (~2 min)</li>
-          <li>Return to Discord and click <strong style="color:#ccc;">Claim Key</strong></li>
+          <li>Return to Discord and click <strong style="color:#ccc;">{{CLAIM_LABEL}}</strong></li>
         </ol>
       </div>
 
@@ -565,7 +565,7 @@
 
       <div class="note">
         Do not close this page until you are redirected.<br>
-        Your key will be delivered via the <strong>bot in Discord</strong>.
+        {{DELIVERY_NOTE}}
       </div>
 
     </div>
@@ -657,5 +657,5 @@
 
     initIcons();
   </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a333dda73a062a09',t:'MTc4ODA5MzY0NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
