@@ -1,6 +1,10 @@
 import os
+import hashlib
+import hmac
+import html as html_lib
 import logging
 import json
+import re
 import secrets
 import time
 import requests
@@ -10,7 +14,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, send_file, redirect, send_from_directory, make_response, render_template
 from datetime import datetime, timedelta
 from collections import defaultdict
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, quote, urlencode, urlparse, urlsplit, urlunsplit
 
 from config import *
 from discord_keys_db import load_discord_keys, save_discord_keys
@@ -30,8 +34,8 @@ from verification_timer import VerificationTimer
 from analytics_db import log_execution as log_execution_to_db, get_analytics as get_analytics_from_db
 from guild_key_system import (
     get_guild_config, save_guild_config, init_guild_config,
-    create_session, get_session, update_session,
-    find_session_by_ip_and_profile, get_pending_session,
+    create_session, get_session, update_session, bind_session_ip,
+    save_session_provider_redirect, find_session_by_ip_and_profile, get_pending_session,
     create_guild_key, validate_guild_key,
     delete_guild_keys_by_user, get_guild_key_stats,
     cleanup_expired_guild_keys, get_destination_url,
@@ -116,15 +120,95 @@ def get_client_ip():
     return client_ip
 
 
+_PROVIDER_REFERRER_HOSTS = (
+    'work.ink',
+    'lootdest.org', 'lootlabs.gg', 'loot-link.com', 'loot-links.com',
+    'linkvertise.com', 'link-to.net', 'direct-link.net', 'linkvertise.net',
+    'link-hub.net', 'link-center.net', 'up-to-down.net',
+)
+_LOOTLABS_HOSTS = ('lootdest.org', 'lootlabs.gg', 'loot-link.com', 'loot-links.com')
+_LOOTLABS_ENCRYPTOR_URL = 'https://creators.lootlabs.gg/api/public/url_encryptor'
+
+
+def _host_matches(host, domains):
+    host = (host or '').lower().rstrip('.')
+    return any(host == domain or host.endswith('.' + domain) for domain in domains)
+
+
 def is_valid_referrer(referer):
-    allowed_referrers = [
-        'work.ink', 'www.work.ink',
-        'lootdest.org', 'lootlabs.gg', 'www.lootlabs.gg',
-        'linkvertise.com', 'www.linkvertise.com',
-        'link-to.net', 'direct-link.net', 'linkvertise.net',
-        'link-hub.net', 'link-center.net', 'up-to-down.net'
-    ]
-    return any(domain in referer for domain in allowed_referrers)
+    """Match an actual provider hostname, never a substring in an attacker URL."""
+    try:
+        host = urlparse(referer or '').hostname
+    except ValueError:
+        return False
+    return _host_matches(host, _PROVIDER_REFERRER_HOSTS)
+
+
+def _no_store_redirect(url):
+    response = redirect(url)
+    response.headers['Cache-Control'] = 'no-store, private, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    return response
+
+
+def _lootlabs_antibypass_link(base_link, destination_url):
+    """Use LootLabs' official Redirect API to encrypt a one-session destination."""
+    token = (os.environ.get('LOOTLABS_API_TOKEN') or '').strip()
+    if token.lower().startswith('bearer '):
+        token = token[7:].strip()
+    if not token:
+        raise RuntimeError('LOOTLABS_API_TOKEN is not configured on the website.')
+
+    if any(char in (base_link or '') for char in '\r\n'):
+        raise RuntimeError('The configured LootLabs URL is invalid.')
+    try:
+        parts = urlsplit(base_link)
+    except ValueError as exc:
+        raise RuntimeError('The configured LootLabs URL is invalid.') from exc
+    if parts.scheme != 'https' or not _host_matches(parts.hostname, _LOOTLABS_HOSTS):
+        raise RuntimeError('The obfuscator profile must use an HTTPS LootLabs URL.')
+    if any(key.lower() == 'data'
+           for key, _value in parse_qsl(parts.query, keep_blank_values=True)):
+        raise RuntimeError('Remove the existing data parameter from the LootLabs URL.')
+
+    try:
+        response = requests.post(
+            _LOOTLABS_ENCRYPTOR_URL,
+            headers={
+                'Authorization': f'Bearer {token}',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            json={
+                'destination_url': destination_url,
+                'api_token': token,
+            },
+            timeout=(5, 15),
+        )
+    except requests.RequestException as exc:
+        raise RuntimeError('LootLabs anti-bypass is temporarily unreachable.') from exc
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise RuntimeError('LootLabs returned an invalid anti-bypass response.') from exc
+    encrypted = payload.get('message') if isinstance(payload, dict) else None
+    payload_error = isinstance(payload, dict) and payload.get('type') == 'error'
+    if (response.status_code >= 400 or payload_error
+            or not isinstance(encrypted, str)):
+        if response.status_code == 401:
+            raise RuntimeError('LootLabs rejected LOOTLABS_API_TOKEN.')
+        if response.status_code == 429:
+            raise RuntimeError('LootLabs rate-limited the anti-bypass request.')
+        raise RuntimeError('LootLabs could not create the anti-bypass redirect.')
+
+    encrypted = encrypted.strip()
+    if (not 8 <= len(encrypted) <= 2048
+            or not re.fullmatch(r'[A-Za-z0-9%+/_=-]+', encrypted)):
+        raise RuntimeError('LootLabs returned an unsafe anti-bypass value.')
+    encrypted = quote(encrypted, safe='%')
+    query = f'{parts.query}&data={encrypted}' if parts.query else f'data={encrypted}'
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, query, parts.fragment))
 
 
 @app.route('/debug-keys')
@@ -1177,7 +1261,7 @@ def ks_gateway(session_token):
     if not session:
         return _render_result(
             '❌', 'Invalid Session',
-            'This session has expired or does not exist. Run the key command again in Discord.',
+            'This session has expired or does not exist. Run the command again in Discord.',
             'error', 'Session Expired'
         ), 403
 
@@ -1189,7 +1273,7 @@ def ks_gateway(session_token):
     if not profile or not profile.get('enabled'):
         return _render_result(
             '❌', 'Key System Disabled',
-            'This script profile is not active.',
+            'This verification profile is not active.',
             'error', 'Disabled'
         ), 403
 
@@ -1202,27 +1286,79 @@ def ks_gateway(session_token):
         ), 403
 
     client_ip = get_client_ip()
-    update_session(session_token, {"ip": client_ip})
+    if not bind_session_ip(session_token, client_ip):
+        logger.warning("KS gateway IP mismatch for session %s", session_token[:8])
+        return _render_result(
+            '❌', 'Session Mismatch',
+            'This verification session was opened on another network or expired.',
+            'error', 'Access Denied'
+        ), 403
 
     try:
         with open('templates/keysystem_gateaway.html', 'r', encoding='utf-8') as f:
-            html = f.read()
+            page = f.read()
     except FileNotFoundError:
         return "Gateway template not found", 500
 
-    html = html.replace('{{SESSION_TOKEN}}', session_token)
-    html = html.replace('{{GUILD_ID}}', session['guild_id'])
-    html = html.replace('{{GUILD_NAME}}', guild_config.get('guild_name', 'Server'))
-    html = html.replace('{{PROFILE_NAME}}', profile.get('name', 'Script'))
+    purpose = session.get('purpose', 'key')
+    reserved_for = profile.get('system_purpose')
+    if reserved_for and reserved_for != purpose:
+        return _render_result(
+            '❌', 'Verification Mismatch',
+            'This profile is reserved for a different verification flow.',
+            'error', 'Access Denied'
+        ), 403
+    is_obfuscator = purpose == 'obfuscator'
+    allowed = session.get('allowed_providers')
+    allowed = set(allowed) if isinstance(allowed, list) else None
 
-    html = html.replace('{{WORKINK_DISABLED}}',
-        '' if profile.get('workink_url') else 'disabled')
-    html = html.replace('{{LOOTLABS_DISABLED}}',
-        '' if profile.get('lootlabs_url') else 'disabled')
-    html = html.replace('{{LINKVERTISE_DISABLED}}',
-        '' if profile.get('linkvertise_url') else 'disabled')
+    def provider_enabled(name, configured_url):
+        return bool(configured_url) and (allowed is None or name in allowed)
 
-    return html
+    guild_name = html_lib.escape(guild_config.get('guild_name', 'Server'))
+    profile_name = html_lib.escape(profile.get('name', 'Script'))
+    if is_obfuscator:
+        flow_title = 'Obfuscator Verification'
+        flow_subtitle = (
+            'Complete LootLabs to unlock '
+            f'<span class="guild-name">{profile_name}</span>'
+        )
+        provider_instruction = 'Use LootLabs to verify this obfuscator unlock'
+        claim_label = 'Claim Access'
+        delivery_note = (
+            'Your obfuscator access will be activated by the '
+            '<strong>bot in Discord</strong>.'
+        )
+    else:
+        flow_title = 'Key Verification'
+        flow_subtitle = (
+            'Complete a task for '
+            f'<span class="guild-name">{guild_name}</span>'
+        )
+        provider_instruction = 'Choose a verification provider below'
+        claim_label = 'Claim Key'
+        delivery_note = (
+            'Your key will be delivered via the '
+            '<strong>bot in Discord</strong>.'
+        )
+
+    replacements = {
+        '{{SESSION_TOKEN}}': session_token,
+        '{{GUILD_ID}}': session['guild_id'],
+        '{{GUILD_NAME}}': guild_name,
+        '{{PROFILE_NAME}}': profile_name,
+        '{{FLOW_TITLE}}': flow_title,
+        '{{FLOW_SUBTITLE}}': flow_subtitle,
+        '{{PROVIDER_INSTRUCTION}}': provider_instruction,
+        '{{CLAIM_LABEL}}': claim_label,
+        '{{DELIVERY_NOTE}}': delivery_note,
+        '{{WORKINK_DISABLED}}': '' if provider_enabled('workink', profile.get('workink_url')) else 'disabled',
+        '{{LOOTLABS_DISABLED}}': '' if provider_enabled('lootlabs', profile.get('lootlabs_url')) else 'disabled',
+        '{{LINKVERTISE_DISABLED}}': '' if provider_enabled('linkvertise', profile.get('linkvertise_url')) else 'disabled',
+    }
+    for needle, value in replacements.items():
+        page = page.replace(needle, str(value))
+    return page
 
 
 @app.route('/ks/timer/<session_token>')
@@ -1238,18 +1374,23 @@ def ks_timer(session_token):
         }), 403
 
     client_ip = get_client_ip()
+    if not bind_session_ip(session_token, client_ip):
+        logger.warning("KS timer IP mismatch for session %s", session_token[:8])
+        return jsonify({"success": False, "error": "Session mismatch"}), 403
 
-    if session.get('ip') and session['ip'] != client_ip:
-        logger.warning(f"KS timer IP mismatch: session={session['ip']}, request={client_ip}")
-        return jsonify({"success": False, "error": "Session mismatch"})
+    # Reloading the gateway must not reset a timer that already started.
+    if session.get('timer_started') and session.get('timer_started_at'):
+        return jsonify({"success": True, "already_started": True})
 
     update_session(session_token, {
         "timer_started": True,
         "timer_started_at": time.time(),
-        "ip": client_ip
     })
 
-    logger.info(f"KS timer started: guild={session['guild_id']}, user={session['discord_name']}, ip={client_ip}")
+    logger.info(
+        "KS timer started: guild=%s user=%s purpose=%s",
+        session['guild_id'], session['discord_name'], session.get('purpose', 'key')
+    )
     return jsonify({"success": True})
 
 
@@ -1259,14 +1400,27 @@ def ks_redirect(session_token, provider):
     if not session:
         return _render_result(
             '❌', 'Invalid Session',
-            'Session expired. Run the key command again in Discord.',
+            'Session expired. Run the command again in Discord.',
             'error'
         ), 403
+    if session.get('completed'):
+        return _render_result(
+            '✅', 'Already Verified',
+            'Return to Discord and use the claim button.',
+            'success', 'Verified!'
+        )
 
     renewal_denied = _renewal_denied_response(session['guild_id'])
     if renewal_denied:
         return renewal_denied
 
+    client_ip = get_client_ip()
+    if session.get('ip') and session['ip'] != client_ip:
+        return _render_result(
+            '❌', 'Session Mismatch',
+            'Continue from the same browser and network that opened the gateway.',
+            'error'
+        ), 403
     if not session.get('timer_started'):
         return _render_result(
             '❌', 'Timer Not Started',
@@ -1274,16 +1428,37 @@ def ks_redirect(session_token, provider):
             'error'
         ), 403
 
+    provider = (provider or '').strip().lower()
+    allowed = session.get('allowed_providers')
+    if isinstance(allowed, list) and provider not in allowed:
+        return _render_result(
+            '❌', 'Provider Not Allowed',
+            'That provider is not enabled for this verification session.',
+            'error'
+        ), 403
+    if session.get('purpose') == 'obfuscator' and provider != 'lootlabs':
+        return _render_result(
+            '❌', 'Provider Not Allowed',
+            'Obfuscator access must be verified through LootLabs.',
+            'error'
+        ), 403
+
     profile = get_script_profile(session['profile_id'])
-    if not profile:
-        return _render_result('❌', 'Error', 'Script profile not found.', 'error'), 404
+    if not profile or not profile.get('enabled'):
+        return _render_result('❌', 'Error', 'Verification profile not found.', 'error'), 404
+    reserved_for = profile.get('system_purpose')
+    if reserved_for and reserved_for != session.get('purpose', 'key'):
+        return _render_result(
+            '❌', 'Verification Mismatch',
+            'This profile is reserved for another verification flow.',
+            'error'
+        ), 403
 
     provider_map = {
         'workink': profile.get('workink_url'),
         'lootlabs': profile.get('lootlabs_url'),
         'linkvertise': profile.get('linkvertise_url'),
     }
-
     url = provider_map.get(provider)
     if not url:
         return _render_result(
@@ -1292,9 +1467,54 @@ def ks_redirect(session_token, provider):
             'error'
         ), 404
 
-    update_session(session_token, {"provider_used": provider})
-    logger.info(f"KS redirect: user={session['discord_name']}, provider={provider}")
-    return redirect(url)
+    purpose = session.get('purpose', 'key')
+    if purpose == 'obfuscator':
+        cached_url = session.get('provider_redirect_url')
+        if (cached_url and session.get('completion_proof_hash')
+                and session.get('provider_used') == 'lootlabs'):
+            return _no_store_redirect(cached_url)
+
+        proof = secrets.token_urlsafe(32)
+        destination = get_destination_url(session['guild_id'], session['profile_id'])
+        separator = '&' if '?' in destination else '?'
+        destination = f'{destination}{separator}{urlencode({"session": session_token, "proof": proof})}'
+        try:
+            url = _lootlabs_antibypass_link(url, destination)
+        except RuntimeError as exc:
+            logger.warning("LootLabs anti-bypass redirect failed: %s", exc)
+            return _render_result(
+                '⚠️', 'Verification Temporarily Unavailable',
+                html_lib.escape(str(exc)),
+                'error', 'Try Again Later'
+            ), 503
+
+        saved_url = save_session_provider_redirect(session_token, {
+            "provider_used": provider,
+            "provider_started_at": time.time(),
+            "completion_proof_hash": hashlib.sha256(
+                proof.encode('utf-8')
+            ).hexdigest(),
+            "provider_redirect_url": url,
+            "lootlabs_antibypass": True,
+        })
+        if not saved_url:
+            return _render_result(
+                '⚠️', 'Verification Temporarily Unavailable',
+                'The protected redirect could not be saved. Please try again.',
+                'error', 'Try Again Later'
+            ), 503
+        url = saved_url
+    else:
+        update_session(session_token, {
+            "provider_used": provider,
+            "provider_started_at": time.time(),
+        })
+
+    logger.info(
+        "KS redirect: user=%s provider=%s purpose=%s",
+        session['discord_name'], provider, purpose
+    )
+    return _no_store_redirect(url) if purpose == 'obfuscator' else redirect(url)
 
 
 @app.route('/ks/done/<guild_id>/<profile_id>')
@@ -1315,10 +1535,9 @@ def ks_done(guild_id, profile_id):
     if not profile or not profile.get('enabled'):
         return _render_result(
             '❌', 'Invalid Profile',
-            'Script profile not found or disabled.',
+            'Verification profile not found or disabled.',
             'error', 'Error'
         ), 404
-
     if profile.get('guild_id') != str(guild_id):
         return _render_result(
             '❌', 'Mismatch',
@@ -1328,18 +1547,42 @@ def ks_done(guild_id, profile_id):
 
     client_ip = get_client_ip()
     referer = request.headers.get('Referer', '')
+    if profile.get('system_purpose') == 'obfuscator':
+        callback_token = (request.args.get('session') or '').strip()
+        callback_proof = (request.args.get('proof') or '').strip()
+        session = get_session(callback_token) if 20 <= len(callback_token) <= 128 else None
+        expected_hash = session.get('completion_proof_hash', '') if session else ''
+        supplied_hash = hashlib.sha256(callback_proof.encode('utf-8')).hexdigest()
+        valid_protected_callback = bool(
+            session
+            and 20 <= len(callback_proof) <= 128
+            and isinstance(expected_hash, str)
+            and hmac.compare_digest(expected_hash, supplied_hash)
+            and session.get('lootlabs_antibypass') is True
+            and session.get('purpose') == 'obfuscator'
+            and str(session.get('guild_id')) == str(guild_id)
+            and str(session.get('profile_id')) == str(profile_id)
+            and session.get('ip') == client_ip
+            and not session.get('completed')
+            and session.get('expires_at', 0) > time.time()
+        )
+        if not valid_protected_callback:
+            session = None
+    else:
+        session = find_session_by_ip_and_profile(client_ip, guild_id, profile_id)
 
-    session = find_session_by_ip_and_profile(client_ip, guild_id, profile_id)
     if not session:
-        logger.warning(f"KS done: no matching session for IP={client_ip}, guild={guild_id}, profile={profile_id}")
+        logger.warning(
+            "KS done: no matching protected session for guild=%s profile=%s",
+            guild_id, profile_id
+        )
         return _render_result(
             '❌', 'No Active Session',
-            'No verification session found. Please start from Discord.',
+            'No valid verification session found. Please start from Discord.',
             'error', 'Access Denied'
         ), 403
 
     timer_started_at = session.get('timer_started_at')
-
     if not timer_started_at:
         return _render_result(
             '❌', 'Timer Error',
@@ -1347,36 +1590,92 @@ def ks_done(guild_id, profile_id):
             'error', 'Error'
         ), 403
 
-    elapsed = time.time() - timer_started_at
-    if elapsed < MIN_COMPLETION_SECONDS:
-        logger.warning(f"KS done: too fast. {elapsed:.1f}s < {MIN_COMPLETION_SECONDS}s, IP={client_ip}")
+    purpose = session.get('purpose', 'key')
+    reserved_for = profile.get('system_purpose')
+    if reserved_for and reserved_for != purpose:
+        return _render_result(
+            '❌', 'Verification Mismatch',
+            'This profile is reserved for another verification flow.',
+            'error', 'Access Denied'
+        ), 403
+    provider = session.get('provider_used')
+    allowed = session.get('allowed_providers')
+    if not provider or (isinstance(allowed, list) and provider not in allowed):
+        return _render_result(
+            '❌', 'Invalid Verification Path',
+            'Open the provider through the verification gateway first.',
+            'error', 'Access Denied'
+        ), 403
+    if purpose == 'obfuscator' and provider != 'lootlabs':
+        return _render_result(
+            '❌', 'Invalid Provider',
+            'Obfuscator access must be completed through LootLabs.',
+            'error', 'Access Denied'
+        ), 403
+
+    try:
+        session_minimum = int(
+            session.get('min_completion_seconds') or MIN_COMPLETION_SECONDS
+        )
+    except (TypeError, ValueError):
+        session_minimum = MIN_COMPLETION_SECONDS
+    required_seconds = min(max(MIN_COMPLETION_SECONDS, session_minimum), 900)
+    completion_started_at = timer_started_at
+    if purpose == 'obfuscator':
+        provider_started_at = session.get('provider_started_at')
+        if not provider_started_at:
+            return _render_result(
+                '❌', 'Invalid Verification Path',
+                'Open LootLabs through the verification gateway first.',
+                'error', 'Access Denied'
+            ), 403
+        completion_started_at = max(timer_started_at, provider_started_at)
+    elapsed = time.time() - completion_started_at
+    if elapsed < required_seconds:
+        logger.warning(
+            "KS done too fast: %.1fs < %ss purpose=%s",
+            elapsed, required_seconds, purpose
+        )
         return _render_result(
             '⚠️', 'Too Fast',
             f'Verification completed too quickly ({elapsed:.0f}s). Please try again properly.',
             'error', 'Verification Failed'
         ), 403
 
-    if referer and not is_valid_referrer(referer):
-        logger.warning(f"KS done: suspicious referer from IP={client_ip}: {referer}")
+    valid_referrer = is_valid_referrer(referer)
+    if referer and not valid_referrer:
+        logger.warning("KS done: invalid provider referrer for purpose=%s", purpose)
         return _render_result(
             '❌', 'Invalid Access',
             'You must complete the verification task through the provided link.',
             'error', 'Access Denied'
         ), 403
-
+    if not referer and session.get('require_referrer'):
+        logger.warning("KS done: required referrer missing for purpose=%s", purpose)
+        return _render_result(
+            '❌', 'Missing Verification Proof',
+            'Return through LootLabs after completing the task; do not open the destination directly.',
+            'error', 'Access Denied'
+        ), 403
     if not referer:
-        logger.info(f"KS done: no referer (likely mobile), allowing. IP={client_ip}")
+        logger.info("KS done: no referrer allowed for legacy/mobile key flow")
 
     update_session(session['token'], {
         "completed": True,
-        "completed_at": time.time()
+        "completed_at": time.time(),
+        "completion_proof_hash": None,
+        "provider_redirect_url": None,
     })
+    logger.info(
+        "KS session completed: user=%s guild=%s purpose=%s provider=%s elapsed=%.1fs",
+        session['discord_name'], guild_id, purpose, provider, elapsed
+    )
 
-    logger.info(f"KS done: session completed. user={session['discord_name']}, guild={guild_id}, profile={profile_id}, elapsed={elapsed:.1f}s")
-
+    claim_label = 'Claim Access' if purpose == 'obfuscator' else 'Claim Key'
+    reward_name = 'obfuscator access' if purpose == 'obfuscator' else 'your key'
     return _render_result(
         '✅', 'Verification Complete!',
-        'Return to Discord and click <span class="highlight">Claim Key</span> to get your key.',
+        f'Return to Discord and click <span class="highlight">{claim_label}</span> to get {reward_name}.',
         'success', 'Verified!'
     )
 
@@ -1392,6 +1691,7 @@ def ks_status(session_token):
         "completed": session.get("completed", False),
         "key_claimed": session.get("key_claimed", False),
         "timer_started": session.get("timer_started", False),
+        "purpose": session.get("purpose", "key"),
         "sponsored_access": renewal.get("state"),
         "access_allowed": renewal.get("allows_access", False),
     })
