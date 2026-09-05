@@ -29,7 +29,10 @@ from utils import inject_meta_tags
 from key_system import KeySystemManager
 from verification_timer import VerificationTimer
 from analytics_db import log_execution as log_execution_to_db, get_analytics as get_analytics_from_db
-from runtime_bundles import read_runtime_bundle
+from runtime_bundles import (
+    read_runtime_bundle,
+    read_runtime_bundle_by_capability,
+)
 from runtime_rpc import handle_batch as handle_runtime_rpc
 from guild_key_system import (
     get_guild_config, save_guild_config, init_guild_config,
@@ -553,6 +556,25 @@ def log_execution():
     if hwid:
         log_execution_to_db(hwid, script)
     return jsonify({"success": True})
+
+
+@app.route('/api/runtime-bundle/claim', methods=['GET'])
+def runtime_bundle_claim():
+    """Return a bundle for the capability reconstructed inside the VM."""
+    capability = request.args.get('c', '')
+    result = read_runtime_bundle_by_capability(capability)
+    if not result:
+        return "Not found", 404
+
+    bundle, bundle_sha256 = result
+    response = make_response(bundle)
+    response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    if bundle_sha256:
+        response.headers['X-Bundle-SHA256'] = bundle_sha256
+    return response
 
 
 @app.route('/api/runtime-bundle/<artifact_id>', methods=['GET'])
