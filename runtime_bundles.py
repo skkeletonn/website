@@ -114,6 +114,40 @@ def authorize_runtime_bundle(artifact_id: str, access_token: str) -> bool:
     return datetime.now(timezone.utc) < expires_at
 
 
+def read_runtime_bundle_by_capability(capability: str):
+    """Return a bundle using only the VM-hidden capability hash."""
+    if not isinstance(capability, str) or len(capability) > 256 or len(capability) < 32:
+        return None
+
+    collection = _get_collection()
+    if collection is None:
+        return None
+    capability_hash = _sha256_text(capability)
+    try:
+        document = collection.find_one(
+            {"capability_sha256": capability_hash},
+            {"bundle": 1, "bundle_sha256": 1, "expires_at": 1},
+        )
+    except Exception:
+        logger.exception("Capability bundle lookup failed")
+        return None
+    if not document:
+        return None
+
+    expires_at = document.get("expires_at")
+    if not isinstance(expires_at, datetime):
+        return None
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) >= expires_at:
+        return None
+
+    bundle = document.get("bundle")
+    if not isinstance(bundle, str) or not bundle.startswith("return {"):
+        return None
+    return bundle, document.get("bundle_sha256")
+
+
 def read_runtime_bundle(artifact_id: str, access_token: str):
     """Return ``(bundle, sha256)`` only for a valid, unexpired artifact."""
     if not artifact_id or not access_token:
