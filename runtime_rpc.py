@@ -18,11 +18,63 @@ _MAX_BATCH_OPERATIONS = 32
 _OPERATIONS: dict[str, Callable[[dict[str, Any]], Any]] = {}
 
 
+def _render_evidence(args: dict[str, Any]):
+    """Render the evidence scanner from state supplied by the client.
+
+    The Roblox observation code remains local; the presentation/state-to-HTML
+    function is deliberately server-owned as the first hybrid proof of
+    concept. Only a small, validated state map crosses the RPC boundary.
+    """
+    states = args.get("states")
+    if not isinstance(states, dict):
+        raise ValueError("states must be an object")
+
+    names = {
+        "emf5": "EMF Level 5",
+        "orbs": "Ghost Orbs",
+        "fingerprints": "Fingerprints",
+        "motion": "Paranormal Motion",
+        "writing": "Ghostly Writing",
+    }
+    colors = {
+        "gray": "rgb(140, 140, 140)",
+        "green": "rgb(95, 235, 120)",
+        "red": "rgb(255, 95, 95)",
+    }
+    lines = [
+        '<font color="%s">Evidence will not appear instantly. Exit van for evidence to start appearing.</font>\\n'
+        % colors["gray"]
+    ]
+    for key in ("emf5", "orbs", "fingerprints", "motion", "writing"):
+        state = states.get(key)
+        name = names[key]
+        if state == "searching":
+            line = '<font color="%s">(|) %s</font>' % (colors["gray"], name)
+        elif state == "found":
+            line = '<font color="%s">(✓) %s</font>' % (colors["green"], name)
+        elif state == "not_found":
+            line = '<font color="%s">(X) %s</font>' % (colors["red"], name)
+        elif state == "waiting":
+            equipment = ""
+            if key == "motion":
+                equipment = " - Place Motion Sensor where ghost is likely to walk"
+            elif key == "writing":
+                equipment = " - Place Book where ghost is likely to walk"
+            line = '<font color="%s">( ) %s%s</font>' % (colors["gray"], name, equipment)
+        else:
+            line = '<font color="%s">( ) %s</font>' % (colors["gray"], name)
+        lines.append(line)
+    return {"content": "\\n".join(lines)}
+
+
 def register_operation(name: str, handler: Callable[[dict[str, Any]], Any]) -> None:
     """Register trusted server code under a stable operation name."""
     if not isinstance(name, str) or not name or not name.replace("_", "").isalnum():
         raise ValueError("invalid RPC operation name")
     _OPERATIONS[name] = handler
+
+
+register_operation("render_evidence", _render_evidence)
 
 
 def enabled_operations() -> list[str]:
