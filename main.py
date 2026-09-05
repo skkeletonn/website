@@ -29,6 +29,7 @@ from utils import inject_meta_tags
 from key_system import KeySystemManager
 from verification_timer import VerificationTimer
 from analytics_db import log_execution as log_execution_to_db, get_analytics as get_analytics_from_db
+from runtime_bundles import read_runtime_bundle
 from guild_key_system import (
     get_guild_config, save_guild_config, init_guild_config,
     create_session, get_session, update_session, bind_session_ip,
@@ -551,6 +552,30 @@ def log_execution():
     if hwid:
         log_execution_to_db(hwid, script)
     return jsonify({"success": True})
+
+
+@app.route('/api/runtime-bundle/<artifact_id>', methods=['GET'])
+def runtime_bundle(artifact_id):
+    """Return one short-lived bundle after per-artifact token validation.
+
+    This deliberately returns the bundle as plain text rather than JSON so the
+    Lua bootstrap needs only one HTTPS request and no JSON decoder. The bot's
+    MongoDB URI and the website's global API_SECRET never leave the server.
+    """
+    access_token = request.args.get('token', '')
+    result = read_runtime_bundle(artifact_id, access_token)
+    if not result:
+        return "Not found", 404
+
+    bundle, bundle_sha256 = result
+    response = make_response(bundle)
+    response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    if bundle_sha256:
+        response.headers['X-Bundle-SHA256'] = bundle_sha256
+    return response
 
 
 @app.route('/analytics-data', methods=['GET'])
