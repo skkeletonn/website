@@ -30,6 +30,7 @@ from key_system import KeySystemManager
 from verification_timer import VerificationTimer
 from analytics_db import log_execution as log_execution_to_db, get_analytics as get_analytics_from_db
 from runtime_bundles import read_runtime_bundle
+from runtime_rpc import handle_batch as handle_runtime_rpc
 from guild_key_system import (
     get_guild_config, save_guild_config, init_guild_config,
     create_session, get_session, update_session, bind_session_ip,
@@ -576,6 +577,22 @@ def runtime_bundle(artifact_id):
     if bundle_sha256:
         response.headers['X-Bundle-SHA256'] = bundle_sha256
     return response
+
+
+@app.route('/api/runtime-rpc/<artifact_id>', methods=['POST'])
+def runtime_rpc(artifact_id):
+    """Run a bounded batch of allowlisted server-side operations."""
+    data = request.get_json(silent=True) or {}
+    access_token = request.args.get('token', '')
+    result, status = handle_runtime_rpc(
+        artifact_id,
+        access_token,
+        data.get('operations'),
+    )
+    response = jsonify(result)
+    response.headers['Cache-Control'] = 'no-store'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    return response, status
 
 
 @app.route('/analytics-data', methods=['GET'])
