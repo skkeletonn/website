@@ -558,10 +558,17 @@ def log_execution():
     return jsonify({"success": True})
 
 
-@app.route('/api/runtime-bundle/claim', methods=['GET'])
+@app.route('/api/runtime-bundle/claim', methods=['GET', 'POST'])
 def runtime_bundle_claim():
-    """Return a bundle for the capability reconstructed inside the VM."""
-    capability = request.args.get('c', '')
+    """Return a bundle for the capability reconstructed inside the VM.
+
+    POST is preferred because the capability stays out of ordinary URL access
+    logs. GET remains as a compatibility fallback for HttpGet-only runtimes.
+    """
+    if request.method == 'POST':
+        capability = request.get_data(cache=False, as_text=True).strip()
+    else:
+        capability = request.args.get('c', '')
     result = read_runtime_bundle_by_capability(capability)
     if not result:
         return "Not found", 404
