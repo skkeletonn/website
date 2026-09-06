@@ -30,6 +30,8 @@ from key_system import KeySystemManager
 from verification_timer import VerificationTimer
 from analytics_db import log_execution as log_execution_to_db, get_analytics as get_analytics_from_db
 from runtime_bundles import (
+    claim_runtime_bundle_challenge,
+    issue_runtime_bundle_challenge,
     read_runtime_bundle,
     read_runtime_bundle_by_capability,
 )
@@ -558,18 +560,39 @@ def log_execution():
     return jsonify({"success": True})
 
 
+@app.route('/api/runtime-bundle/challenge', methods=['POST'])
+def runtime_bundle_challenge():
+    """Issue one short-lived nonce for challenge-mode bundle delivery."""
+    artifact_id = request.get_data(cache=False, as_text=True).strip()
+    nonce = issue_runtime_bundle_challenge(artifact_id)
+    if not nonce:
+        return "Not found", 404
+    response = make_response(nonce)
+    response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    return response
+
+
 @app.route('/api/runtime-bundle/claim', methods=['GET', 'POST'])
 def runtime_bundle_claim():
-    """Return a bundle for the capability reconstructed inside the VM.
+    """Return a capability-mode or one-time challenge-mode bundle.
 
-    POST is preferred because the capability stays out of ordinary URL access
-    logs. GET remains as a compatibility fallback for HttpGet-only runtimes.
+    POST is preferred because secrets stay out of ordinary URL access logs.
+    A three-line POST body is challenge mode: artifact ID, nonce, HMAC.
+    A one-line POST body is the legacy hidden-capability mode. GET remains as
+    a compatibility fallback for HttpGet-only runtimes.
     """
     if request.method == 'POST':
-        capability = request.get_data(cache=False, as_text=True).strip()
+        body = request.get_data(cache=False, as_text=True).strip()
+        challenge_parts = body.splitlines()
+        if len(challenge_parts) == 3:
+            result = claim_runtime_bundle_challenge(*challenge_parts)
+        else:
+            result = read_runtime_bundle_by_capability(body)
     else:
-        capability = request.args.get('c', '')
-    result = read_runtime_bundle_by_capability(capability)
+        result = read_runtime_bundle_by_capability(request.args.get('c', ''))
     if not result:
         return "Not found", 404
 
