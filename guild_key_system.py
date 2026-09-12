@@ -416,64 +416,6 @@ def find_session_by_ip_and_profile(ip, guild_id, profile_id, purpose=None):
         return None
 
 
-def get_static_obfuscator_session_by_ip(ip):
-    """Find the newest live static-locker session for this callback IP."""
-    if guild_sessions_collection is None or not ip:
-        return None
-    try:
-        doc = guild_sessions_collection.find_one(
-            {
-                "purpose": "obfuscator",
-                "static_callback": True,
-                "ip": ip,
-                "gateway_opened_at": {"$ne": None},
-                "timer_started": True,
-                "provider_used": "lootlabs",
-                "completed": False,
-                "expires_at": {"$gt": time.time()},
-            },
-            sort=[("provider_started_at", -1), ("created_at", -1)],
-        )
-        if not doc:
-            return None
-        session = {k: v for k, v in doc.items() if k != "_id"}
-        session["token"] = doc["_id"]
-        return session
-    except Exception as e:
-        logger.error(f"Failed to find static obfuscator callback session: {e}")
-        return None
-
-
-def complete_static_obfuscator_session(token, ip):
-    """Atomically complete one validated static-locker session."""
-    if guild_sessions_collection is None:
-        return None
-    try:
-        now = time.time()
-        doc = guild_sessions_collection.find_one_and_update(
-            {
-                "_id": token,
-                "purpose": "obfuscator",
-                "static_callback": True,
-                "ip": ip,
-                "gateway_opened_at": {"$ne": None},
-                "timer_started": True,
-                "provider_used": "lootlabs",
-                "completed": False,
-                "expires_at": {"$gt": now},
-            },
-            {"$set": {"completed": True, "completed_at": now}},
-        )
-        if not doc:
-            return None
-        session = {k: v for k, v in doc.items() if k != "_id"}
-        session["token"] = doc["_id"]
-        return session
-    except Exception as e:
-        logger.error(f"Failed to complete static obfuscator session: {e}")
-        return None
-
-
 def get_pending_session(discord_id, guild_id, profile_id, purpose=None):
     """Return the newest completed, unclaimed session for this user/profile."""
     if guild_sessions_collection is None:
