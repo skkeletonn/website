@@ -29,13 +29,6 @@ from utils import inject_meta_tags
 from key_system import KeySystemManager
 from verification_timer import VerificationTimer
 from analytics_db import log_execution as log_execution_to_db, get_analytics as get_analytics_from_db
-from runtime_bundles import (
-    claim_runtime_bundle_challenge,
-    issue_runtime_bundle_challenge,
-    read_runtime_bundle,
-    read_runtime_bundle_by_capability,
-)
-from runtime_rpc import handle_batch as handle_runtime_rpc
 from guild_key_system import (
     get_guild_config, save_guild_config, init_guild_config,
     create_session, get_session, update_session, bind_session_ip,
@@ -130,7 +123,6 @@ _PROVIDER_REFERRER_HOSTS = (
     'linkvertise.com', 'link-to.net', 'direct-link.net', 'linkvertise.net',
     'link-hub.net', 'link-center.net', 'up-to-down.net',
 )
-_LOOTLABS_HOSTS = ('lootdest.org', 'lootlabs.gg', 'loot-link.com', 'loot-links.com')
 
 
 def _host_matches(host, domains):
@@ -145,25 +137,6 @@ def is_valid_referrer(referer):
     except ValueError:
         return False
     return _host_matches(host, _PROVIDER_REFERRER_HOSTS)
-
-
-def _is_valid_lootlabs_url(url):
-    try:
-        parsed = urlparse(url or '')
-    except ValueError:
-        return False
-    return (
-        parsed.scheme == 'https'
-        and not any(char in (url or '') for char in '\r\n')
-        and _host_matches(parsed.hostname, _LOOTLABS_HOSTS)
-    )
-
-
-def _no_store_redirect(url):
-    response = redirect(url)
-    response.headers['Cache-Control'] = 'no-store, private, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    return response
 
 
 @app.route('/debug-keys')
@@ -558,93 +531,6 @@ def log_execution():
     if hwid:
         log_execution_to_db(hwid, script)
     return jsonify({"success": True})
-
-
-@app.route('/api/runtime-bundle/challenge', methods=['POST'])
-def runtime_bundle_challenge():
-    """Issue one short-lived nonce for challenge-mode bundle delivery."""
-    artifact_id = request.get_data(cache=False, as_text=True).strip()
-    nonce = issue_runtime_bundle_challenge(artifact_id)
-    if not nonce:
-        return "Not found", 404
-    response = make_response(nonce)
-    response.headers['Content-Type'] = 'text/plain; charset=utf-8'
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Referrer-Policy'] = 'no-referrer'
-    return response
-
-
-@app.route('/api/runtime-bundle/claim', methods=['GET', 'POST'])
-def runtime_bundle_claim():
-    """Return a capability-mode or one-time challenge-mode bundle.
-
-    POST is preferred because secrets stay out of ordinary URL access logs.
-    A three-line POST body is challenge mode: artifact ID, nonce, HMAC.
-    A one-line POST body is the legacy hidden-capability mode. GET remains as
-    a compatibility fallback for HttpGet-only runtimes.
-    """
-    if request.method == 'POST':
-        body = request.get_data(cache=False, as_text=True).strip()
-        challenge_parts = body.splitlines()
-        if len(challenge_parts) == 3:
-            result = claim_runtime_bundle_challenge(*challenge_parts)
-        else:
-            result = read_runtime_bundle_by_capability(body)
-    else:
-        result = read_runtime_bundle_by_capability(request.args.get('c', ''))
-    if not result:
-        return "Not found", 404
-
-    bundle, bundle_sha256 = result
-    response = make_response(bundle)
-    response.headers['Content-Type'] = 'text/plain; charset=utf-8'
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Referrer-Policy'] = 'no-referrer'
-    if bundle_sha256:
-        response.headers['X-Bundle-SHA256'] = bundle_sha256
-    return response
-
-
-@app.route('/api/runtime-bundle/<artifact_id>', methods=['GET'])
-def runtime_bundle(artifact_id):
-    """Return one short-lived bundle after per-artifact token validation.
-
-    This deliberately returns the bundle as plain text rather than JSON so the
-    Lua bootstrap needs only one HTTPS request and no JSON decoder. The bot's
-    MongoDB URI and the website's global API_SECRET never leave the server.
-    """
-    access_token = request.args.get('token', '')
-    result = read_runtime_bundle(artifact_id, access_token)
-    if not result:
-        return "Not found", 404
-
-    bundle, bundle_sha256 = result
-    response = make_response(bundle)
-    response.headers['Content-Type'] = 'text/plain; charset=utf-8'
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Referrer-Policy'] = 'no-referrer'
-    if bundle_sha256:
-        response.headers['X-Bundle-SHA256'] = bundle_sha256
-    return response
-
-
-@app.route('/api/runtime-rpc/<artifact_id>', methods=['POST'])
-def runtime_rpc(artifact_id):
-    """Run a bounded batch of allowlisted server-side operations."""
-    data = request.get_json(silent=True) or {}
-    access_token = request.args.get('token', '')
-    result, status = handle_runtime_rpc(
-        artifact_id,
-        access_token,
-        data.get('operations'),
-    )
-    response = jsonify(result)
-    response.headers['Cache-Control'] = 'no-store'
-    response.headers['Referrer-Policy'] = 'no-referrer'
-    return response, status
 
 
 @app.route('/analytics-data', methods=['GET'])
@@ -1311,31 +1197,13 @@ def ks_gateway(session_token):
     if renewal_denied:
         return renewal_denied
 
-    purpose = session.get('purpose', 'key')
-    is_obfuscator = purpose == 'obfuscator'
-    if is_obfuscator:
-        static_link = session.get('provider_url')
-        if not session.get('static_callback') or not _is_valid_lootlabs_url(static_link):
-            return _render_result(
-                '❌', 'Verification Unavailable',
-                'The static LootLabs link is not configured correctly.',
-                'error', 'Unavailable'
-            ), 503
-        profile = {
-            'name': session.get('flow_name', 'Obfuscator Access'),
-            'enabled': True,
-            'workink_url': '',
-            'lootlabs_url': static_link,
-            'linkvertise_url': '',
-        }
-    else:
-        profile = get_script_profile(session['profile_id'])
-        if not profile or not profile.get('enabled'):
-            return _render_result(
-                '❌', 'Key System Disabled',
-                'This verification profile is not active.',
-                'error', 'Disabled'
-            ), 403
+    profile = get_script_profile(session['profile_id'])
+    if not profile or not profile.get('enabled'):
+        return _render_result(
+            '❌', 'Key System Disabled',
+            'This verification profile is not active.',
+            'error', 'Disabled'
+        ), 403
 
     guild_config = get_guild_config(session['guild_id'])
     if not guild_config or not guild_config.get('enabled'):
@@ -1375,30 +1243,17 @@ def ks_gateway(session_token):
 
     guild_name = html_lib.escape(guild_config.get('guild_name', 'Server'))
     profile_name = html_lib.escape(profile.get('name', 'Script'))
-    if is_obfuscator:
-        flow_title = 'Obfuscator Verification'
-        flow_subtitle = (
-            'Complete LootLabs to unlock '
-            f'<span class="guild-name">{profile_name}</span>'
-        )
-        provider_instruction = 'Use LootLabs to verify this obfuscator unlock'
-        claim_label = 'Claim Access'
-        delivery_note = (
-            'Your obfuscator access will be activated by the '
-            '<strong>bot in Discord</strong>.'
-        )
-    else:
-        flow_title = 'Key Verification'
-        flow_subtitle = (
-            'Complete a task for '
-            f'<span class="guild-name">{guild_name}</span>'
-        )
-        provider_instruction = 'Choose a verification provider below'
-        claim_label = 'Claim Key'
-        delivery_note = (
-            'Your key will be delivered via the '
-            '<strong>bot in Discord</strong>.'
-        )
+    flow_title = 'Key Verification'
+    flow_subtitle = (
+        'Complete a task for '
+        f'<span class="guild-name">{guild_name}</span>'
+    )
+    provider_instruction = 'Choose a verification provider below'
+    claim_label = 'Claim Key'
+    delivery_note = (
+        'Your key will be delivered via the '
+        '<strong>bot in Discord</strong>.'
+    )
 
     replacements = {
         '{{SESSION_TOKEN}}': session_token,
@@ -1500,39 +1355,23 @@ def ks_redirect(session_token, provider):
             'error'
         ), 403
     purpose = session.get('purpose', 'key')
-    if purpose == 'obfuscator' and provider != 'lootlabs':
+    profile = get_script_profile(session['profile_id'])
+    if not profile or not profile.get('enabled'):
         return _render_result(
-            '❌', 'Provider Not Allowed',
-            'Obfuscator access must be verified through LootLabs.',
+            '❌', 'Error', 'Verification profile not found.', 'error'
+        ), 404
+    provider_map = {
+        'workink': profile.get('workink_url'),
+        'lootlabs': profile.get('lootlabs_url'),
+        'linkvertise': profile.get('linkvertise_url'),
+    }
+    url = provider_map.get(provider)
+    if not url:
+        return _render_result(
+            '❌', 'Provider Unavailable',
+            'This verification provider is not configured.',
             'error'
-        ), 403
-
-    if purpose == 'obfuscator':
-        url = session.get('provider_url')
-        if not session.get('static_callback') or not _is_valid_lootlabs_url(url):
-            return _render_result(
-                '❌', 'Provider Unavailable',
-                'The static LootLabs link is not configured correctly.',
-                'error'
-            ), 503
-    else:
-        profile = get_script_profile(session['profile_id'])
-        if not profile or not profile.get('enabled'):
-            return _render_result(
-                '❌', 'Error', 'Verification profile not found.', 'error'
-            ), 404
-        provider_map = {
-            'workink': profile.get('workink_url'),
-            'lootlabs': profile.get('lootlabs_url'),
-            'linkvertise': profile.get('linkvertise_url'),
-        }
-        url = provider_map.get(provider)
-        if not url:
-            return _render_result(
-                '❌', 'Provider Unavailable',
-                'This verification provider is not configured.',
-                'error'
-            ), 404
+        ), 404
     if not update_session(session_token, {
         "provider_used": provider,
         "provider_started_at": time.time(),
@@ -1547,7 +1386,7 @@ def ks_redirect(session_token, provider):
         "KS redirect: user=%s provider=%s purpose=%s",
         session['discord_name'], provider, purpose
     )
-    return _no_store_redirect(url) if purpose == 'obfuscator' else redirect(url)
+    return redirect(url)
 
 
 @app.route('/ks/done/<guild_id>/<profile_id>')
@@ -1619,12 +1458,6 @@ def ks_done(guild_id, profile_id):
             'Open the provider through the verification gateway first.',
             'error', 'Access Denied'
         ), 403
-    if purpose == 'obfuscator' and provider != 'lootlabs':
-        return _render_result(
-            '❌', 'Invalid Provider',
-            'Obfuscator access must be completed through LootLabs.',
-            'error', 'Access Denied'
-        ), 403
 
     try:
         session_minimum = int(
@@ -1633,17 +1466,7 @@ def ks_done(guild_id, profile_id):
     except (TypeError, ValueError):
         session_minimum = MIN_COMPLETION_SECONDS
     required_seconds = min(max(MIN_COMPLETION_SECONDS, session_minimum), 900)
-    completion_started_at = timer_started_at
-    if purpose == 'obfuscator':
-        provider_started_at = session.get('provider_started_at')
-        if not provider_started_at:
-            return _render_result(
-                '❌', 'Invalid Verification Path',
-                'Open LootLabs through the verification gateway first.',
-                'error', 'Access Denied'
-            ), 403
-        completion_started_at = max(timer_started_at, provider_started_at)
-    elapsed = time.time() - completion_started_at
+    elapsed = time.time() - timer_started_at
     if elapsed < required_seconds:
         logger.warning(
             "KS done too fast: %.1fs < %ss purpose=%s",
@@ -1682,11 +1505,9 @@ def ks_done(guild_id, profile_id):
         session['discord_name'], guild_id, purpose, provider, elapsed
     )
 
-    claim_label = 'Claim Access' if purpose == 'obfuscator' else 'Claim Key'
-    reward_name = 'obfuscator access' if purpose == 'obfuscator' else 'your key'
     return _render_result(
         '✅', 'Verification Complete!',
-        f'Return to Discord and click <span class="highlight">{claim_label}</span> to get {reward_name}.',
+        'Return to Discord and click <span class="highlight">Claim Key</span> to get your key.',
         'success', 'Verified!'
     )
 
