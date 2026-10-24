@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -55,36 +55,6 @@
   --stage-shadow: inset 0 1px 0 rgba(110,231,183,.08), inset 0 -40px 80px rgba(0,0,0,.4);
 }
 
-html[data-theme="light"] {
-  --bg: #f7fbf9;
-  --bg-2: #eef6f1;
-  --surface: rgba(255, 255, 255, 0.85);
-  --surface-2: rgba(244, 250, 246, 0.8);
-  --elev: #ecf5ef;
-  --border: #dceee3;
-  --border-strong: #b6dcc6;
-  --text: #07241a;
-  --muted: #4d6b5d;
-  --muted-2: #6f8a7d;
-
-  --mint: #10b981;
-  --mint-2: #059669;
-  --mint-3: #047857;
-  --mint-deep: #065f46;
-  --mint-glow: rgba(16,185,129,.30);
-
-  --shadow-1: 0 1px 0 rgba(255,255,255,.65) inset, 0 6px 22px rgba(7,36,26,.07);
-  --shadow-mint: 0 10px 30px -12px rgba(16,185,129,.45);
-
-  --body-grad-top: #f7fbf9;
-  --body-grad-bot: #ecf5ef;
-  --body-glow: rgba(16,185,129,.10);
-  --nav-grad-top: rgba(255,255,255,.92);
-  --nav-grad-bot: rgba(255,255,255,.7);
-  --nav-border: rgba(220,238,227,.85);
-  --stage-bg: #f1f8f4;
-  --stage-shadow: inset 0 0 0 1px rgba(7,36,26,.04);
-}
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -149,18 +119,6 @@ footer { animation: fade-up 0.8s cubic-bezier(.2,.7,.2,1) both; animation-delay:
 .nav-right { display: flex; align-items: center; gap: 14px; }
 .nav-link { color: var(--muted); font-weight: 600; font-size: 14px; padding: 8px 12px; border-radius: 10px; transition: color .15s, text-shadow .15s; }
 .nav-link:hover { color: var(--text); text-shadow: 0 0 10px var(--text); background: transparent; }
-.theme-toggle {
-  background: transparent; border: 1px solid var(--border); border-radius: 50%;
-  width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center;
-  color: var(--muted); cursor: pointer; padding: 0;
-  transition: color .2s, transform .2s, border-color .2s, background .2s;
-}
-.theme-toggle:hover { color: var(--mint); border-color: var(--mint-3); background: var(--surface-2); transform: rotate(-12deg); }
-.theme-toggle svg { width: 20px; height: 20px; }
-.theme-toggle .icon-moon { display: none; }
-.theme-toggle .icon-sun { display: block; }
-html[data-theme="dark"] .theme-toggle .icon-sun { display: none; }
-html[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
 
 .hero {
   max-width: 1180px;
@@ -252,9 +210,7 @@ main { max-width: 1180px; margin: 0 auto 40px; padding: 0 clamp(20px, 4vw, 48px)
 #waveform .wavesurfer-region { background: rgba(76,175,80,.18) !important; }
 .fade-overlay { position: absolute; left: 22px; right: 22px; top: 18px; bottom: 18px; pointer-events: none; width: calc(100% - 44px); height: calc(100% - 36px); display: block; z-index: 10; }
 .fade-overlay polygon.wedge-fade  { fill: rgba(239, 68, 68, 0.28); }
-html[data-theme="light"] .fade-overlay polygon.wedge-fade { fill: rgba(239, 68, 68, 0.22); }
 .fade-overlay polygon.wedge-boost { fill: rgba(76, 175, 80, 0.22); }
-html[data-theme="light"] .fade-overlay polygon.wedge-boost { fill: rgba(16, 185, 129, 0.18); }
 .playhead-grab { cursor: grab; }
 .playhead-grab.dragging { cursor: grabbing; }
 
@@ -333,7 +289,7 @@ html[data-theme="light"] .fade-overlay polygon.wedge-boost { fill: rgba(16, 185,
 .row .label { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; }
 .row .label small { display: block; text-transform: none; letter-spacing: 0; font-family: var(--sans); color: var(--muted-2); font-size: 11px; margin-top: 3px; }
 .row .value { font-family: var(--mono); font-size: 14px; color: var(--mint-3); min-width: 70px; text-align: right; font-weight: 600; }
-.row-stack > .row { grid-template-columns: 180px 1fr; }
+.row-stack > .row { grid-template-columns: 180px 1fr auto; }   /* label | control | value — the value column was missing, so it wrapped under the slider */
 .row-full > .row { grid-template-columns: 1fr; }
 
 input[type=range] {
@@ -438,6 +394,8 @@ input[type=number]:focus, input[type=text]:focus { border-color: var(--mint); bo
 .cover-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cover-preview .ph { color: var(--muted); font-family: var(--mono); font-size: 12px; padding: 16px; text-align: center; }
 .cover-actions { display: flex; flex-direction: column; gap: 10px; }
+.tint-toggle { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--muted); cursor: pointer; user-select: none; margin-top: 4px; }
+.tint-toggle input { accent-color: var(--mint); width: 15px; height: 15px; cursor: pointer; }
 
 .export-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 640px) { .export-grid { grid-template-columns: 1fr; } }
@@ -477,7 +435,6 @@ footer {
   display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   background: rgba(0,0,0,0.1);
 }
-html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
 .ft-brand { display: flex; align-items: center; gap: 14px; font-weight: 800; font-size: 18px; color: var(--text); transition: text-shadow 0.2s; }
 .ft-brand:hover { text-shadow: 0 0 12px var(--mint-glow); }
 .ft-icon-wrap { position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; }
@@ -521,10 +478,6 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
     <a class="nav-link" href="/projects">Projects</a>
     <a class="nav-link" href="/converter">PIXL</a>
     <a class="nav-link" href="https://discord.com/invite/WDbJ5wE2cR" target="_blank" rel="noopener">Discord</a>
-    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
-      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-    </button>
   </div>
 </nav>
 
@@ -642,6 +595,10 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
         <button class="tab" data-tab="pitch" role="tab">
           <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
           Pitch
+        </button>
+        <button class="tab" data-tab="boost" role="tab">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+          Loudness
         </button>
         <button class="tab" data-tab="cover" role="tab">
           <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
@@ -769,13 +726,12 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
         <div class="curve-wrap">
           <canvas id="curveCanvas"></canvas>
           <div class="curve-foot">
-            <div class="curve-hint">drag · <b>click</b> add · <b>right-click</b> remove · <b>shift</b> or <b>snap</b> to land on presets</div>
+            <div class="curve-hint">drag · <b>click</b> add · <b>right-click</b> remove · any speed you want</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <div class="segmented" id="curveInterpSeg">
-                <button data-interp="linear" class="active">Linear</button>
-                <button data-interp="smooth">Smooth</button>
+                <button data-interp="linear">Linear</button>
+                <button data-interp="smooth" class="active">Smooth</button>
               </div>
-              <button class="btn btn-ghost" id="btnCurveSnap" aria-pressed="false" title="Snap points to preset speeds while dragging (off = any value)" style="padding:6px 12px;font-size:13px;">snap off</button>
               <button class="btn btn-ghost" id="btnCurveReset" style="padding:6px 12px;font-size:13px;">Reset curve</button>
             </div>
           </div>
@@ -820,13 +776,49 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
             <div></div>
           </div>
         </div>
-        <p class="muted" style="font-size:12px;margin-top:12px;"><span id="pitchLiveNote">Live preview is a real-time playback-rate shift, so it moves pitch <b>and</b> tempo — that's why it responds instantly.</span> Saving bakes a tempo-preserving shift (duration stays the same) which is slower because the whole file gets re-rendered.</p>
+        <p class="muted" style="font-size:12px;margin-top:12px;"><span id="pitchLiveNote">Drag to audition. This preview is pitch-only — the tempo stays exactly where it is.</span> Saving bakes the same shift into the file.</p>
         <div class="btn-row">
           <button class="btn btn-primary" id="btnApplyPitch">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             Save pitch on preview
           </button>
           <button class="btn btn-ghost" id="btnResetPitch">Reset to 0</button>
+        </div>
+      </div>
+
+      <div class="panel" data-panel="boost">
+        <div class="row-stack">
+          <div class="row">
+            <div class="label">Volume<small>flat gain on everything · up to +24 dB</small></div>
+            <input type="range" id="volBoostRange" min="0" max="24" step="0.5" value="0"/>
+            <div class="value" id="volBoostVal">0.0 dB</div>
+          </div>
+          <div class="row">
+            <div class="label">Bass<small>low shelf only · up to +24 dB</small></div>
+            <input type="range" id="bassBoostRange" min="0" max="24" step="0.5" value="0"/>
+            <div class="value" id="bassBoostVal">0.0 dB</div>
+          </div>
+          <div class="row">
+            <div class="label">Bass corner<small>where the shelf rolls off</small></div>
+            <input type="range" id="bassFreqRange" min="60" max="240" step="5" value="110"/>
+            <div class="value" id="bassFreqVal">110 Hz</div>
+          </div>
+          <div class="row">
+            <div class="label">Peak limiter<small>catches the clipping a big boost causes</small></div>
+            <div class="segmented" id="limiterSeg">
+              <button data-limiter="on" class="active">On</button>
+              <button data-limiter="off">Off</button>
+            </div>
+            <div></div>
+          </div>
+        </div>
+        <p class="muted" style="font-size:12px;margin-top:12px;"><b>Volume</b> is a flat gain — everything gets louder, and it will clip without the limiter. <b>Bass</b> is a low-shelf EQ — only the low end comes up, vocals stay put. Both are audible live and baked into the download.</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btnApplyBoost">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Save boost on preview
+          </button>
+          <button class="btn btn-ghost" id="btnResetBoost">Reset</button>
         </div>
       </div>
 
@@ -847,6 +839,10 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
             </button>
             <button class="btn btn-danger" id="btnClearCover">Remove cover</button>
             <p class="muted" style="font-size:12px;margin-top:8px;">Cover is embedded on export: MP3 gets a real ID3v2 APIC frame, WAV gets an <span class="mono">id3 </span> chunk. Extraction reads MP3, M4A/MP4 and FLAC.</p>
+            <label class="tint-toggle">
+              <input type="checkbox" id="coverTintToggle" checked/>
+              <span>tint the page with this artwork</span>
+            </label>
           </div>
         </div>
       </div>
@@ -908,26 +904,6 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
-(function () {
-  const saved = localStorage.getItem('teenytuning-theme') || 'dark';
-  document.documentElement.dataset.theme = saved;
-  $('#themeToggle').addEventListener('click', () => {
-    const cur = document.documentElement.dataset.theme || 'dark';
-    const next = cur === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = next;
-    localStorage.setItem('teenytuning-theme', next);
-    if (state.ws) {
-      try {
-        state.ws.setOptions({
-          waveColor: getCss('--mint-3'),
-          progressColor: getCss('--mint-deep'),
-          cursorColor: getCss('--mint-3'),
-        });
-      } catch (_) {}
-    }
-    drawCurve();
-  });
-})();
 
 const toast = (msg, kind = '') => {
   const t = $('#toast');
@@ -975,6 +951,8 @@ const state = {
   volume: 1,
   livePreview: { fadeIn: 0, fadeOut: 0, boostIn: 0, boostOut: 0, pitchPreview: 0, speed: 1, pitchLock: false },
   cover: { data: null, mime: null },
+  coverBlob: null,
+  boost: { volDb: 0, bassDb: 0, bassFreq: 110, limiter: true },
   ws: null,
   wsRegions: null,
   audioCtx: null,
@@ -1049,6 +1027,9 @@ async function handleFile(file) {
     state.originalBuffer = cloneBuffer(buf);
     state.undoStack = [];
     state.cover = { data: null, mime: null };
+    state.boost = { volDb: 0, bassDb: 0, bassFreq: 110, limiter: true };
+    syncBoostUI();
+    PreviewEngine.applyBoost();
     await tryAutoExtractCover();
     renderLoadedFile(file, buf);
     await mountWavesurfer(buf);
@@ -1200,12 +1181,51 @@ const PreviewEngine = {
   raf: null,
 
   ensureCtx() {
-    if (!this.ctx) {
-      this.ctx = getCtx();
-      this.gain = this.ctx.createGain();
-      this.gain.gain.value = 1;
-      this.gain.connect(this.ctx.destination);
-    }
+    if (this.ctx) return;
+    this.ctx = getCtx();
+    this.gain = this.ctx.createGain();
+    this.gain.gain.value = 1;
+    this.limiter = this.ctx.createDynamicsCompressor();
+    this.boostGain = this.ctx.createGain();
+    this.boostGain.gain.value = 1;
+    this.bass = this.ctx.createBiquadFilter();
+    this.bass.type = 'lowshelf';
+    this.bass.frequency.value = 110;
+    this.bass.gain.value = 0;
+    this.bass.connect(this.boostGain);
+    this.boostGain.connect(this.limiter);
+    this.limiter.connect(this.gain);
+    this.gain.connect(this.ctx.destination);
+    this.input = this.bass;          // head of the preview chain
+    this.setBoostLimiter(true);
+    this.applyBoost();
+  },
+
+  /* ratio 1 = perfectly transparent, so the limiter can sit in the graph all
+     the time without colouring anything until you actually boost. */
+  setBoostLimiter(on) {
+    if (!this.limiter) return;
+    const now = this.ctx.currentTime;
+    this.limiter.ratio.value = on ? 20 : 1;
+    this.limiter.threshold.value = on ? -1.5 : 0;
+    this.limiter.knee.value = 0;
+    this.limiter.attack.value = 0.003;
+    this.limiter.release.value = 0.15;
+    this.limiter.attack.cancelScheduledValues(now);
+  },
+
+  applyBoost() {
+    if (!this.ctx || !this.boostGain) return;
+    const b = state.boost || { volDb: 0, bassDb: 0, bassFreq: 110, limiter: true };
+    const now = this.ctx.currentTime;
+    const vol = Math.pow(10, (b.volDb || 0) / 20);
+    this.boostGain.gain.cancelScheduledValues(now);
+    this.boostGain.gain.setTargetAtTime(b.volDb > 0.01 ? vol : 1, now, 0.02);
+    this.bass.frequency.cancelScheduledValues(now);
+    this.bass.frequency.setTargetAtTime(b.bassFreq || 110, now, 0.02);
+    this.bass.gain.cancelScheduledValues(now);
+    this.bass.gain.setTargetAtTime(b.bassDb > 0.01 ? b.bassDb : 0, now, 0.02);
+    this.setBoostLimiter(b.limiter !== false && (b.volDb > 0.01 || b.bassDb > 0.01));
   },
 
   attach(ws) {
@@ -1215,8 +1235,10 @@ const PreviewEngine = {
     try {
       if (this.source) { this.source.disconnect(); }
       this.source = this.ctx.createMediaElementSource(el);
-      this.source.connect(this.gain);
+      this.pitchOn = false;
+      this.source.connect(this.input || this.gain);
       this.attachedTo = el;
+      this.applyBoost();
       el.preservesPitch = state.livePreview.pitchLock;
       el.mozPreservesPitch = state.livePreview.pitchLock;
       el.webkitPreservesPitch = state.livePreview.pitchLock;
@@ -1658,6 +1680,118 @@ async function breathe(state_) {
   return state_;
 }
 
+/* ---- loudness: volume + bass ----------------------------------------- */
+
+const dbToGain = (db) => Math.pow(10, (Number(db) || 0) / 20);
+
+function boostActive(b) {
+  b = b || state.boost;
+  return (b.volDb || 0) > 0.01 || (b.bassDb || 0) > 0.01;
+}
+
+/* Same chain the preview uses, rendered offline so the download matches what
+   you heard: low shelf -> gain -> peak limiter. */
+async function applyBoostOffline(buf, boost) {
+  const b = boost || state.boost;
+  if (!boostActive(b)) return buf;
+  const ch = buf.numberOfChannels;
+  const off = new OfflineAudioContext(ch, Math.max(1, buf.length), buf.sampleRate);
+  const src = off.createBufferSource();
+  src.buffer = buf;
+  let node = src;
+  if ((b.bassDb || 0) > 0.01) {
+    const shelf = off.createBiquadFilter();
+    shelf.type = 'lowshelf';
+    shelf.frequency.value = b.bassFreq || 110;
+    shelf.gain.value = b.bassDb;
+    node.connect(shelf); node = shelf;
+  }
+  if ((b.volDb || 0) > 0.01) {
+    const g = off.createGain();
+    g.gain.value = dbToGain(b.volDb);
+    node.connect(g); node = g;
+  }
+  if (b.limiter !== false) {
+    const comp = off.createDynamicsCompressor();
+    comp.threshold.value = -1.5;
+    comp.knee.value = 0;
+    comp.ratio.value = 20;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.15;
+    node.connect(comp); node = comp;
+  }
+  node.connect(off.destination);
+  src.start();
+  busy.prog(0.08, 'applying boost…');
+  await nextFrame();
+  return await off.startRendering();
+}
+
+function syncBoostUI() {
+  const b = state.boost;
+  if ($('#volBoostRange')) $('#volBoostRange').value = b.volDb;
+  if ($('#volBoostVal')) $('#volBoostVal').textContent = (b.volDb || 0).toFixed(1) + ' dB';
+  if ($('#bassBoostRange')) $('#bassBoostRange').value = b.bassDb;
+  if ($('#bassBoostVal')) $('#bassBoostVal').textContent = (b.bassDb || 0).toFixed(1) + ' dB';
+  if ($('#bassFreqRange')) $('#bassFreqRange').value = b.bassFreq;
+  if ($('#bassFreqVal')) $('#bassFreqVal').textContent = b.bassFreq + ' Hz';
+  const seg = $('#limiterSeg');
+  if (seg) $$('button', seg).forEach(x => x.classList.toggle('active', (x.dataset.limiter === 'on') === (b.limiter !== false)));
+  updatePending();
+}
+
+$('#volBoostRange')?.addEventListener('input', (e) => {
+  state.boost.volDb = parseFloat(e.target.value) || 0;
+  $('#volBoostVal').textContent = state.boost.volDb.toFixed(1) + ' dB';
+  PreviewEngine.applyBoost();
+  updatePending();
+});
+$('#bassBoostRange')?.addEventListener('input', (e) => {
+  state.boost.bassDb = parseFloat(e.target.value) || 0;
+  $('#bassBoostVal').textContent = state.boost.bassDb.toFixed(1) + ' dB';
+  PreviewEngine.applyBoost();
+  updatePending();
+});
+$('#bassFreqRange')?.addEventListener('input', (e) => {
+  state.boost.bassFreq = parseInt(e.target.value, 10) || 110;
+  $('#bassFreqVal').textContent = state.boost.bassFreq + ' Hz';
+  PreviewEngine.applyBoost();
+});
+$('#limiterSeg')?.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-limiter]');
+  if (!b) return;
+  state.boost.limiter = b.dataset.limiter === 'on';
+  $$('button', $('#limiterSeg')).forEach(x => x.classList.toggle('active', x === b));
+  PreviewEngine.applyBoost();
+  updatePending();
+});
+
+$('#btnResetBoost')?.addEventListener('click', () => {
+  state.boost = { volDb: 0, bassDb: 0, bassFreq: 110, limiter: true };
+  syncBoostUI();
+  PreviewEngine.applyBoost();
+});
+
+$('#btnApplyBoost')?.addEventListener('click', async () => {
+  if (!state.audioBuffer) return;
+  if (!boostActive()) { toast('boost is already at 0 dB', 'err'); return; }
+  busy.show('baking boost…');
+  await new Promise(r => setTimeout(r, 20));
+  pushUndo();
+  try {
+    state.audioBuffer = await applyBoostOffline(state.audioBuffer, state.boost);
+    state.boost = { volDb: 0, bassDb: 0, bassFreq: state.boost.bassFreq, limiter: true };
+    syncBoostUI();
+    PreviewEngine.applyBoost();
+    await refreshWaveform({ preserveCurve: true });
+    toast('boost applied', 'ok');
+  } catch (err) {
+    console.error(err);
+    toast('boost failed: ' + (err.message || err), 'err');
+  }
+  busy.hide();
+});
+
 function hannWindow(n) {
   const w = new Float32Array(n);
   if (n <= 1) { w[0] = 1; return w; }
@@ -1781,12 +1915,15 @@ const curveCtx = curveCanvas.getContext('2d');
 let curvePoints = [{ t: 0, v: 1 }, { t: 1, v: 1 }];
 let curveDragIdx = -1;
 let curveSelIdx = 0;
-let curveInterp = 'linear';
-/* Snapping is opt-in. By default every point keeps whatever value you drag it to
-   (0.001× resolution) — nothing is forced onto the curve. */
-let curveSnapOn = false;
+/* Smooth by default, and whatever you pick sticks for next time. */
+const CURVE_INTERP_KEY = 'teenytuning-curve-interp';
+let curveInterp = (() => {
+  try {
+    const v = localStorage.getItem(CURVE_INTERP_KEY);
+    return v === 'linear' || v === 'smooth' ? v : 'smooth';
+  } catch (_) { return 'smooth'; }
+})();
 const SPEED_MIN = 0.25, SPEED_MAX = 4.0;
-const SNAP_SPEEDS = [0.25, 0.50, 0.75, 0.90, 1.00, 1.15, 1.30, 1.50, 2.00, 3.00, 4.00];
 
 function sortCurve() {
   curvePoints.sort((a, b) => a.t - b.t);
@@ -1934,35 +2071,10 @@ function clampSpeed(v) {
   return Math.max(SPEED_MIN, Math.min(SPEED_MAX, v));
 }
 
-function snapSpeed(v) {
-  const y = speedToY(v);
-  let best = v, bestD = 7; // px
-  for (const g of SNAP_SPEEDS) {
-    const d = Math.abs(speedToY(g) - y);
-    if (d < bestD) { bestD = d; best = g; }
-  }
-  return best;
-}
-
-/* Only snaps when snapping was explicitly asked for (toggle on, or shift held).
-   Otherwise the raw value survives, rounded to 3 decimals so the number you see
-   is the number that gets rendered. */
-function resolveCurveSpeed(v, forceSnap) {
-  v = clampSpeed(v);
-  if (curveSnapOn || forceSnap) return clampSpeed(snapSpeed(v));
-  return Math.round(v * 1000) / 1000;
-}
-
-function setCurveSnap(on) {
-  curveSnapOn = !!on;
-  const btn = $('#btnCurveSnap');
-  if (btn) {
-    btn.textContent = curveSnapOn ? 'snap on' : 'snap off';
-    btn.classList.toggle('btn-primary', curveSnapOn);
-    btn.classList.toggle('btn-ghost', !curveSnapOn);
-    btn.setAttribute('aria-pressed', curveSnapOn ? 'true' : 'false');
-  }
-  toast(curveSnapOn ? 'curve snapping on — points land on presets' : 'curve snapping off — any value', 'ok');
+/* The value the pointer is at, rounded to 3 decimals so the number you see is
+   the number that gets rendered. No preset snapping anywhere. */
+function resolveCurveSpeed(v) {
+  return Math.round(clampSpeed(v) * 1000) / 1000;
 }
 
 function syncCurvePointEdit() {
@@ -2035,7 +2147,7 @@ curveCanvas.addEventListener('pointermove', (e) => {
   if (!isEdge) p.t = xToTime(x);
   else if (curveDragIdx === 0) p.t = 0;
   else p.t = 1;
-  p.v = resolveCurveSpeed(yToSpeed(y), e.shiftKey);
+  p.v = resolveCurveSpeed(yToSpeed(y));
   sortCurve();
   curveDragIdx = curvePoints.indexOf(p);
   curveSelIdx = curveDragIdx;
@@ -2061,14 +2173,19 @@ curveCanvas.addEventListener('contextmenu', (e) => {
 });
  $('#btnCurveReset').addEventListener('click', () => resetCurveDefault());
 const curveInterpSeg = $('#curveInterpSeg');
-if (curveInterpSeg) curveInterpSeg.addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-interp]');
-  if (!b) return;
-  $$('button', curveInterpSeg).forEach(x => x.classList.remove('active'));
-  b.classList.add('active');
-  curveInterp = b.dataset.interp;
-  drawCurve(); updateCurveStats(); updatePending();
-});
+if (curveInterpSeg) {
+  const syncInterpButtons = () => $$('button', curveInterpSeg).forEach(x =>
+    x.classList.toggle('active', x.dataset.interp === curveInterp));
+  syncInterpButtons();
+  curveInterpSeg.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-interp]');
+    if (!b) return;
+    curveInterp = b.dataset.interp;
+    try { localStorage.setItem(CURVE_INTERP_KEY, curveInterp); } catch (_) {}
+    syncInterpButtons();
+    drawCurve(); updateCurveStats(); updatePending();
+  });
+}
  $('#curvePointVal').addEventListener('change', () => {
   const p = curvePoints[curveSelIdx];
   if (!p) return;
@@ -2078,8 +2195,7 @@ if (curveInterpSeg) curveInterpSeg.addEventListener('click', (e) => {
   p.v = Math.round(clampSpeed(v) * 1000) / 1000;
   drawCurve(); updateCurveStats(); syncCurvePointEdit(); updatePending();
 });
- const btnCurveSnap = $('#btnCurveSnap');
-if (btnCurveSnap) btnCurveSnap.addEventListener('click', () => setCurveSnap(!curveSnapOn));
+
 
  $('#btnApplyCurve').addEventListener('click', async () => {
   if (!state.audioBuffer) return;
@@ -2207,12 +2323,120 @@ function concatBuffers(chunks) {
   return out;
 }
 
+/* ---------- artwork-driven theme -------------------------------------- */
+
+const THEME_KEYS = ['--mint', '--mint-2', '--mint-3', '--mint-deep', '--mint-glow',
+  '--bg', '--bg-2', '--body-grad-top', '--body-grad-bot', '--body-glow'];
+const COVER_TINT_KEY = 'teenytuning-cover-tint';
+let coverTintOn = (() => {
+  try { return localStorage.getItem(COVER_TINT_KEY) !== 'off'; } catch (_) { return true; }
+})();
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else h = ((r - g) / d + 4) / 6;
+  return [h, s, l];
+}
+
+function hslToHex(h, s, l) {
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) => {
+    const k = (n + h / 30) % 12;
+    const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(255 * c).toString(16).padStart(2, '0');
+  };
+  return '#' + f(0) + f(8) + f(4);
+}
+
+function repaintAccents() {
+  if (state.ws) {
+    try {
+      state.ws.setOptions({
+        waveColor: getCss('--mint-3'),
+        progressColor: getCss('--mint-deep'),
+        cursorColor: getCss('--mint-3'),
+      });
+    } catch (_) {}
+  }
+  drawCurve();
+}
+
+function resetCoverTheme() {
+  const st = document.documentElement.style;
+  THEME_KEYS.forEach(k => st.removeProperty(k));
+  repaintAccents();
+}
+
+/* hue: degrees, sat: percent. Keeps the dark, low-light page look while taking
+   its accent colour from the artwork. */
+function applyPalette(hue, sat) {
+  const st = document.documentElement.style;
+  const H = Math.round((hue % 360 + 360) % 360);
+  const S = Math.round(Math.max(35, Math.min(90, sat)));
+  const S2 = Math.min(95, S + 8);
+  st.setProperty('--mint', hslToHex(H, S / 100, 0.55));
+  st.setProperty('--mint-2', hslToHex(H, S2 / 100, 0.68));
+  st.setProperty('--mint-3', hslToHex(H, S2 / 100, 0.80));
+  st.setProperty('--mint-deep', hslToHex(H, S / 100, 0.34));
+  st.setProperty('--mint-glow', 'hsla(' + H + ',' + S + '%,55%,.35)');
+  st.setProperty('--bg', hslToHex(H, (S * 0.30) / 100, 0.045));
+  st.setProperty('--bg-2', hslToHex(H, (S * 0.32) / 100, 0.065));
+  st.setProperty('--body-grad-top', hslToHex(H, (S * 0.30) / 100, 0.055));
+  st.setProperty('--body-grad-bot', hslToHex(H, (S * 0.38) / 100, 0.025));
+  st.setProperty('--body-glow', 'hsla(' + H + ',' + Math.min(95, S + 10) + '%,55%,.16)');
+  repaintAccents();
+}
+
+/* Pulls the dominant *colourful* hue out of the artwork. Greyscale or washed
+   out covers fall back to the stock mint theme instead of a muddy grey page. */
+async function applyCoverTheme(blob) {
+  if (!coverTintOn || !blob) { resetCoverTheme(); return; }
+  try {
+    const bmp = await createImageBitmap(blob);
+    const S = 48;
+    const cv = document.createElement('canvas');
+    cv.width = S; cv.height = S;
+    const g2 = cv.getContext('2d', { willReadFrequently: true });
+    g2.drawImage(bmp, 0, 0, S, S);
+    const { data } = g2.getImageData(0, 0, S, S);
+    const buckets = Array.from({ length: 12 }, () => ({ n: 0, r: 0, g: 0, b: 0 }));
+    let total = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 128) continue;
+      total++;
+      const [h, s, l] = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+      if (s < 0.14 || l < 0.08 || l > 0.94) continue;      // grey / near-black / blown out
+      const w = s * (1 - Math.abs(l - 0.5));
+      const B = buckets[Math.min(11, Math.floor(h * 12))];
+      B.n += w;
+      B.r += data[i] * w; B.g += data[i + 1] * w; B.b += data[i + 2] * w;
+    }
+    let best = buckets[0];
+    for (const B of buckets) if (B.n > best.n) best = B;
+    if (!total || best.n < total * 0.02) { resetCoverTheme(); return; }
+    const [h, s] = rgbToHsl(best.r / best.n, best.g / best.n, best.b / best.n);
+    applyPalette(h * 360, s * 100 * 1.15);
+  } catch (err) {
+    console.warn('cover tint failed:', err);
+    resetCoverTheme();
+  }
+}
+
 const coverPreview = $('#coverPreview');
 const coverPh = $('#coverPh');
 const coverInput = $('#coverInput');
 const loadedThumb = $('#loadedThumb');
 
 function showCover(blob) {
+  state.coverBlob = blob;
   $$('img', coverPreview).forEach(el => el.remove());
   if (coverPh) coverPh.style.display = 'none';
   const img = document.createElement('img');
@@ -2224,28 +2448,45 @@ function showCover(blob) {
   thumbImg.src = URL.createObjectURL(blob);
   loadedThumb.appendChild(thumbImg);
   loadedThumb.querySelector('svg')?.style.setProperty('display', 'none');
+  applyCoverTheme(blob);
 }
 function clearCoverUI() {
   $$('img', coverPreview).forEach(el => el.remove());
   if (coverPh) coverPh.style.display = '';
   $$('img', loadedThumb).forEach(el => el.remove());
   loadedThumb.querySelector('svg')?.style.setProperty('display', '');
+  state.coverBlob = null;
+  resetCoverTheme();
 }
 
  $('#btnUploadCover').addEventListener('click', () => coverInput.click());
 coverInput.addEventListener('change', async (e) => {
-  const f = e.target.files?.[0]; if (!f) return;
+  const f = e.target.files?.[0];
+  // clear the input so re-picking the same file still fires 'change'
+  e.target.value = '';
+  if (!f) return;
   const bytes = new Uint8Array(await f.arrayBuffer());
   state.cover = { data: bytes, mime: f.type || 'image/jpeg' };
   showCover(new Blob([bytes], { type: state.cover.mime }));
   toast('cover loaded', 'ok');
 });
  $('#btnClearCover').addEventListener('click', () => {
+  if (coverInput) coverInput.value = '';
   state.cover = { data: null, mime: null };
   clearCoverUI();
   toast('cover removed');
 });
  $('#btnExtractCover').addEventListener('click', () => tryAutoExtractCover(true));
+const coverTintToggle = $('#coverTintToggle');
+if (coverTintToggle) {
+  coverTintToggle.checked = coverTintOn;
+  coverTintToggle.addEventListener('change', () => {
+    coverTintOn = coverTintToggle.checked;
+    try { localStorage.setItem(COVER_TINT_KEY, coverTintOn ? 'on' : 'off'); } catch (_) {}
+    if (coverTintOn && state.coverBlob) applyCoverTheme(state.coverBlob);
+    else resetCoverTheme();
+  });
+}
 
 async function tryAutoExtractCover(notify = false) {
   if (!state.fileBytes) return;
@@ -2650,6 +2891,8 @@ async function processExport() {
     exportBuffer = applyFadeAndBoost(exportBuffer, fi, fo, bi, bo, fadeCurve);
   }
 
+  if (boostActive()) exportBuffer = await applyBoostOffline(exportBuffer);
+
   const speedVal = parseFloat($('#speedRange').value);
   if (Math.abs(speedVal - 1) > 0.001) {
     busy.prog(0.05, state.pitchLock ? 'stretching (pitch-locked)…' : 'resampling…');
@@ -2728,6 +2971,10 @@ function updatePending() {
   if (!isCurveFlat()) chips.push('speed curve');
   const pit = parseFloat($('#pitchRange')?.value) || 0;
   if (Math.abs(pit) >= 0.05) chips.push((pit >= 0 ? '+' : '') + pit.toFixed(1) + ' st');
+  if (state.boost) {
+    if (state.boost.volDb > 0.01) chips.push('+' + state.boost.volDb.toFixed(1) + ' dB vol');
+    if (state.boost.bassDb > 0.01) chips.push('+' + state.boost.bassDb.toFixed(1) + ' dB bass');
+  }
   bar.querySelectorAll('.chip').forEach(el => el.remove());
   if (!chips.length) {
     const n = document.createElement('span');
@@ -2797,37 +3044,258 @@ function setPreservesPitch(el, on) {
   el.webkitPreservesPitch = on;
 }
 
-/* Live pitch preview.
-   Moving pitch without moving tempo needs a real DSP stage in the audio graph
-   (that's what the AudioWorklet route on vocalremover.org does). The cheap,
-   always-available version — and what sites use for a "pitch" slider that
-   responds the instant you drag it — is a playback-rate shift with pitch
-   preservation switched off. So: drag = instant pitch+tempo preview, Save =
-   bake a true tempo-preserving shift. */
-function pitchPreviewRate() {
+/* ---- live pitch-only preview (AudioWorklet) --------------------------
+   A granular pitch shifter running in the audio graph. It reads the incoming
+   stream at rate `ratio` inside each grain (that's the pitch change) while
+   advancing the grain start by one hop per hop of output (that's the tempo
+   staying put), with a WSOLA correlation search to keep the grains phase
+   aligned. Result: pitch moves, tempo doesn't, and it responds while you drag
+   because nothing is re-rendered — the slider just writes `ratio`. */
+
+const TT_PITCH_SRC = `
+class TTPitch extends AudioWorkletProcessor {
+  static get parameterDescriptors() {
+    return [{ name: 'ratio', defaultValue: 1, minValue: 0.25, maxValue: 4, automationRate: 'k-rate' }];
+  }
+  constructor() {
+    super();
+    this.G = 2048;          // grain length, output samples
+    this.H = 512;           // hop, output samples
+    this.SEARCH = 320;      // alignment search radius, input samples
+    this.CAP = 1 << 16;
+    this.mem = [new Float32Array(this.CAP), new Float32Array(this.CAP)];
+    this.chans = 2;
+    this.memLen = 0;
+    this.memBase = 0;
+    this.nextStart = 0;
+    this.anchor = 0;
+    this.started = false;
+    this.ola = [new Float32Array(this.G), new Float32Array(this.G)];
+    this.win = new Float32Array(this.G);
+    for (let i = 0; i < this.G; i++) this.win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / this.G);
+    this.QL = 1 << 15;
+    this.q = [new Float32Array(this.QL), new Float32Array(this.QL)];
+    this.qW = 0;
+    this.qR = 0;
+    this.port.onmessage = (e) => {
+      if (e.data === 'reset') {
+        this.memLen = 0; this.memBase = 0; this.nextStart = 0; this.anchor = 0; this.started = false;
+        this.qW = 0; this.qR = 0;
+        for (let c = 0; c < 2; c++) { this.ola[c].fill(0); }
+      }
+    };
+  }
+
+  read(c, pos) {
+    const i = Math.floor(pos);
+    const f = pos - i;
+    const a = i - this.memBase;
+    const mem = this.mem[c];
+    if (a < 0) return mem[0] || 0;
+    if (a + 1 >= this.memLen) return mem[Math.min(a, this.memLen - 1)] || 0;
+    return mem[a] * (1 - f) + mem[a + 1] * f;
+  }
+
+  push(input, frames) {
+    if (this.memLen + frames > this.CAP) this.compact();
+    const nSrc = input.length;
+    for (let c = 0; c < this.chans; c++) {
+      const src = input[Math.min(c, nSrc - 1)];
+      if (!src) { this.mem[c].fill(0, this.memLen, this.memLen + frames); continue; }
+      this.mem[c].set(src.subarray(0, frames), this.memLen);
+    }
+    this.memLen += frames;
+  }
+
+  compact() {
+    const keepFrom = Math.max(this.memBase, Math.floor(this.nextStart) - this.SEARCH);
+    const drop = Math.min(this.memLen, keepFrom - this.memBase);
+    if (drop <= 0) return;
+    for (let c = 0; c < this.chans; c++) {
+      this.mem[c].copyWithin(0, drop, this.memLen);
+    }
+    this.memLen -= drop;
+    this.memBase += drop;
+  }
+
+  produce(ratio) {
+    const G = this.G, H = this.H, SR = this.SEARCH;
+    const hi = this.memBase + this.memLen;
+    if (!this.started) { this.nextStart = this.memBase; this.anchor = this.memBase; }
+    if (this.nextStart + G * ratio + 2 > hi) return false;
+
+    /* Search around an anchor that advances by exactly one hop per grain. The
+       alignment offset never carries over to the next grain, so the output can
+       not drift ahead of (or behind) the incoming stream. */
+    let best = this.anchor;
+    if (this.started) {
+      let bestScore = -Infinity;
+      const lo = Math.max(this.memBase, Math.round(this.anchor) - SR);
+      const hiCand = Math.round(this.anchor) + SR;
+      for (let cand = lo; cand <= hiCand; cand += 8) {
+        if (cand + G * ratio + 2 > hi) break;
+        let sc = 0;
+        for (let i = H; i < G; i += 8) sc += this.ola[0][i] * this.read(0, cand + i * ratio);
+        if (sc > bestScore) { bestScore = sc; best = cand; }
+      }
+    }
+    this.anchor += H;
+
+    for (let c = 0; c < this.chans; c++) {
+      const ola = this.ola[c], win = this.win;
+      for (let i = 0; i < G; i++) ola[i] += this.read(c, best + i * ratio) * win[i];
+    }
+    this.started = true;
+
+    for (let c = 0; c < this.chans; c++) {
+      const ola = this.ola[c], q = this.q[c];
+      for (let i = 0; i < H; i++) q[(this.qW + i) % this.QL] = ola[i];
+      ola.copyWithin(0, H);
+      ola.fill(0, G - H);
+    }
+    this.qW += H;
+    this.nextStart = best + H;
+    return true;
+  }
+
+  process(inputs, outputs, parameters) {
+    const input = inputs[0];
+    const output = outputs[0];
+    const frames = output[0].length;
+    const ratio = Math.max(0.25, Math.min(4, parameters.ratio[0] || 1));
+    if (input && input.length && input[0]) this.push(input, frames);
+
+    let guard = 0;
+    while (this.qW - this.qR < frames && guard++ < 8) {
+      if (!this.produce(ratio)) break;
+      if (this.memLen > this.CAP - 8192) this.compact();
+    }
+
+    for (let c = 0; c < output.length; c++) {
+      const dst = output[c];
+      const q = this.q[Math.min(c, 1)];
+      if (this.qW - this.qR >= frames) {
+        for (let i = 0; i < frames; i++) dst[i] = q[(this.qR + i) % this.QL];
+      } else {
+        dst.fill(0);
+      }
+    }
+    if (this.qW - this.qR >= frames) this.qR += frames;
+    return true;
+  }
+}
+registerProcessor('tt-pitch', TTPitch);
+`;
+
+let pitchWorkletState = 'idle';   // idle | loading | ready | failed
+
+function ensurePitchWorklet() {
+  if (pitchWorkletState === 'ready') return Promise.resolve(true);
+  if (pitchWorkletState === 'failed') return Promise.resolve(false);
+  if (ensurePitchWorklet._p) return ensurePitchWorklet._p;
+  pitchWorkletState = 'loading';
+  ensurePitchWorklet._p = (async () => {
+    try {
+      const ctx = getCtx();
+      if (!ctx.audioWorklet) throw new Error('AudioWorklet unsupported');
+      const url = URL.createObjectURL(new Blob([TT_PITCH_SRC], { type: 'application/javascript' }));
+      await ctx.audioWorklet.addModule(url);
+      URL.revokeObjectURL(url);
+      pitchWorkletState = 'ready';
+      return true;
+    } catch (err) {
+      console.warn('pitch worklet unavailable:', err);
+      pitchWorkletState = 'failed';
+      return false;
+    }
+  })();
+  return ensurePitchWorklet._p;
+}
+
+function ensurePitchNode() {
+  const eng = PreviewEngine;
+  if (eng.pitchNode || !eng.ctx) return eng.pitchNode;
+  try {
+    eng.pitchNode = new AudioWorkletNode(eng.ctx, 'tt-pitch', {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+    });
+    eng.pitchNode.parameters.get('ratio').value = 1;
+    eng.pitchNode.connect(eng.input || eng.gain);
+    return eng.pitchNode;
+  } catch (err) {
+    console.warn('pitch node failed:', err);
+    pitchWorkletState = 'failed';
+    return null;
+  }
+}
+
+/* Rewire the media element either straight into the chain or through the
+   pitch shifter. Duplicate connections are ignored by spec, but disconnect
+   first anyway so the routing is unambiguous. */
+function routeThroughPitch(on) {
+  const eng = PreviewEngine;
+  if (!eng.source) return;
+  if (on && !eng.pitchNode) return;
+  if (eng.pitchOn === on) return;
+  try { eng.source.disconnect(); } catch (_) {}
+  const head = (on && eng.pitchNode) ? eng.pitchNode : (eng.input || eng.gain);
+  eng.source.connect(head);
+  eng.pitchOn = !!on;
+  if (eng.pitchNode) {
+    try { eng.pitchNode.port.postMessage('reset'); } catch (_) {}
+  }
+}
+
+function pitchPreviewSemis() {
   const onPitchTab = (document.querySelector('.tab.active')?.dataset?.tab) === 'pitch';
-  if (!onPitchTab || !state.audioBuffer) return null;
+  if (!onPitchTab || !state.audioBuffer) return 0;
   const semis = parseFloat($('#pitchRange')?.value) || 0;
-  if (Math.abs(semis) < 0.05) return null;
-  return Math.pow(2, semis / 12);
+  return Math.abs(semis) < 0.05 ? 0 : semis;
 }
 
 function applyPitchPreview() {
   if (!state.ws) return;
   const el = PreviewEngine.attachedTo;
-  const rate = pitchPreviewRate();
+  const semis = pitchPreviewSemis();
   const note = $('#pitchLiveNote');
-  if (rate === null) {
+  const speed = state.livePreview.speed || 1;
+
+  if (semis === 0) {
+    routeThroughPitch(false);
     setPreservesPitch(el, state.livePreview.pitchLock);
-    state.ws.setPlaybackRate(state.livePreview.speed || 1, state.livePreview.pitchLock);
-    if (note) note.innerHTML = 'Live preview is a real-time playback-rate shift, so it moves pitch <b>and</b> tempo — that\u2019s why it responds instantly.';
+    state.ws.setPlaybackRate(speed, state.livePreview.pitchLock);
+    if (note) note.innerHTML = 'Drag to audition. This preview is pitch-only \u2014 the tempo stays exactly where it is.';
     return;
   }
+
+  const ratio = Math.pow(2, semis / 12);
+
+  if (pitchWorkletState === 'ready' && ensurePitchNode()) {
+    routeThroughPitch(true);
+    try {
+      const p = PreviewEngine.pitchNode.parameters.get('ratio');
+      p.value = ratio;
+      if (p.cancelScheduledValues) p.cancelScheduledValues(PreviewEngine.ctx.currentTime);
+    } catch (_) {}
+    setPreservesPitch(el, true);
+    state.ws.setPlaybackRate(speed, true);
+    if (note) note.innerHTML = 'live pitch-only preview \u00b7 <b>' + (semis >= 0 ? '+' : '') + semis.toFixed(1) + ' st</b> \u00b7 tempo unchanged';
+    return;
+  }
+
+  if (pitchWorkletState === 'idle' || pitchWorkletState === 'loading') {
+    ensurePitchWorklet().then(() => applyPitchPreview());
+  }
+
+  /* Fallback only: no AudioWorklet support / module blocked. Rate shift keeps
+     the slider useful, at the cost of moving tempo too. */
+  routeThroughPitch(false);
   setPreservesPitch(el, false);
-  state.ws.setPlaybackRate(rate, false);
+  state.ws.setPlaybackRate(ratio, false);
   if (note) {
-    const st = parseFloat($('#pitchRange').value) || 0;
-    note.innerHTML = 'live preview · <b>' + (st >= 0 ? '+' : '') + st.toFixed(1) + ' st</b> at ' + rate.toFixed(2) + '× speed (pitch and tempo move together)';
+    note.innerHTML = 'browser fallback \u00b7 <b>' + (semis >= 0 ? '+' : '') + semis.toFixed(1) + ' st</b> at ' + ratio.toFixed(2) + '\u00d7 \u2014 tempo moves with it here. Save still bakes pitch-only.';
   }
 }
 function clearPitchPreview() { applyPitchPreview(); }
@@ -2929,7 +3397,7 @@ if (state.audioBuffer) { drawFadeOverlay(); }
 requestAnimationFrame(() => { sizeCurveCanvas(); drawCurve(); updateCurveStats(); updatePending(); });
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fbd2448ac5c263',t:'MTc5Mjg3NDY4Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fbf4579f3ec263',t:'MTc5Mjg3NjA4MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 
 </html>
