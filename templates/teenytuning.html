@@ -769,12 +769,13 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
         <div class="curve-wrap">
           <canvas id="curveCanvas"></canvas>
           <div class="curve-foot">
-            <div class="curve-hint">drag · <b>click</b> add · <b>right-click</b> remove · snaps to 1.00× · up to <b>4×</b></div>
+            <div class="curve-hint">drag · <b>click</b> add · <b>right-click</b> remove · <b>shift</b> or <b>snap</b> to land on presets</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <div class="segmented" id="curveInterpSeg">
                 <button data-interp="linear" class="active">Linear</button>
                 <button data-interp="smooth">Smooth</button>
               </div>
+              <button class="btn btn-ghost" id="btnCurveSnap" aria-pressed="false" title="Snap points to preset speeds while dragging (off = any value)" style="padding:6px 12px;font-size:13px;">snap off</button>
               <button class="btn btn-ghost" id="btnCurveReset" style="padding:6px 12px;font-size:13px;">Reset curve</button>
             </div>
           </div>
@@ -787,7 +788,7 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
         </div>
         <div class="point-edit" id="curvePointEdit">
           <label>selected point</label>
-          <input type="number" id="curvePointVal" min="0.25" max="4" step="0.01" value="1" style="max-width:110px;" title="Exact speed for the selected point"/>
+          <input type="number" id="curvePointVal" min="0.25" max="4" step="0.001" value="1" style="max-width:110px;" title="Exact speed for the selected point — any value, no snapping"/>
           <span class="muted" style="font-size:12px;" id="curvePointMeta">click a point, then type the exact speed</span>
         </div>
         <div class="btn-row">
@@ -819,7 +820,7 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
             <div></div>
           </div>
         </div>
-        <p class="muted" style="font-size:12px;margin-top:12px;">Bakes a real pitch shift — duration stays the same. (Browsers can't preview pitch without also changing speed, so hit save to hear it.)</p>
+        <p class="muted" style="font-size:12px;margin-top:12px;"><span id="pitchLiveNote">Live preview is a real-time playback-rate shift, so it moves pitch <b>and</b> tempo — that's why it responds instantly.</span> Saving bakes a tempo-preserving shift (duration stays the same) which is slower because the whole file gets re-rendered.</p>
         <div class="btn-row">
           <button class="btn btn-primary" id="btnApplyPitch">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -845,7 +846,7 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
               Upload new cover
             </button>
             <button class="btn btn-danger" id="btnClearCover">Remove cover</button>
-            <p class="muted" style="font-size:12px;margin-top:8px;">Cover is embedded on export. Read/write works for MP3 (ID3v2) and FLAC. WAV exports won't carry cover art.</p>
+            <p class="muted" style="font-size:12px;margin-top:8px;">Cover is embedded on export: MP3 gets a real ID3v2 APIC frame, WAV gets an <span class="mono">id3 </span> chunk. Extraction reads MP3, M4A/MP4 and FLAC.</p>
           </div>
         </div>
       </div>
@@ -901,7 +902,6 @@ html[data-theme="light"] footer { background: rgba(255,255,255,0.4); }
 
 <script src="https://unpkg.com/wavesurfer.js@7.8.6/dist/wavesurfer.min.js"></script>
 <script src="https://unpkg.com/wavesurfer.js@7.8.6/dist/plugins/regions.min.js"></script>
-<script src="https://unpkg.com/soundtouchjs@0.1.30/dist/soundtouch.js"></script>
 <script src="https://unpkg.com/lamejs@1.2.1/lame.min.js"></script>
 
 <script>
@@ -1228,12 +1228,9 @@ const PreviewEngine = {
   applyImmediate() {
     if (!state.ws) return;
     const el = this.attachedTo;
-    if (el) {
-      el.preservesPitch = state.livePreview.pitchLock;
-      el.mozPreservesPitch = state.livePreview.pitchLock;
-      el.webkitPreservesPitch = state.livePreview.pitchLock;
-    }
+    setPreservesPitch(el, state.livePreview.pitchLock);
     const activeTab = document.querySelector('.tab.active')?.dataset?.tab;
+    if (activeTab === 'pitch') { applyPitchPreview(); return; }
     if (activeTab !== 'curve') {
       state.ws.setPlaybackRate(state.livePreview.speed, state.livePreview.pitchLock);
     }
@@ -1343,7 +1340,11 @@ function bindSwitch(el, key) {
     if (key === 'main') {
       state.pitchLock = on;
       state.livePreview.pitchLock = on;
-      if (state.ws) state.ws.setPlaybackRate(state.livePreview.speed, on);
+      if (state.ws) {
+        // keep whatever the active tab wants (curve / pitch preview / plain speed)
+        state.ws.setPlaybackRate(state.livePreview.speed, on);
+        applyPitchPreview();
+      }
       $('#pitchLockLabel').textContent = on ? 'on' : 'off';
       $('#pitchLockLabel').style.color = on ? 'var(--mint-3)' : 'var(--muted)';
       const semis = 12 * Math.log2(state.livePreview.speed || 1);
@@ -1598,7 +1599,7 @@ liveVal('speedRange', v => v.toFixed(2) + '×');
   await new Promise(r => setTimeout(r, 20));
   pushUndo();
   state.audioBuffer = state.pitchLock
-    ? timeStretch(state.audioBuffer, f, 0)
+    ? await timeStretch(state.audioBuffer, f, 0)
     : resampleSpeed(state.audioBuffer, f);
   $('#speedRange').value = 1;
   $('#speedVal').textContent = '1.00×';
@@ -1628,11 +1629,12 @@ async function bakePitch() {
   await new Promise(r => setTimeout(r, 20));
   pushUndo();
   try {
-    state.audioBuffer = pitchShiftPreserveTempo(state.audioBuffer, semis);
+    state.audioBuffer = await pitchShiftPreserveTempo(state.audioBuffer, semis);
     $('#pitchRange').value = 0;
     $('#pitchVal').textContent = '+0.0 st';
     state.livePreview.pitchPreview = 0;
     await refreshWaveform({ preserveCurve: true });
+    applyPitchPreview();
     toast('pitch applied · duration unchanged', 'ok');
   } catch (err) {
     console.error(err);
@@ -1642,7 +1644,19 @@ async function bakePitch() {
   updatePending();
 }
  $('#btnApplyPitch').addEventListener('click', bakePitch);
- $('#pitchRange').addEventListener('input', () => updatePending());
+ $('#pitchRange').addEventListener('input', () => { updatePending(); applyPitchPreview(); });
+
+/* Lets the browser paint the busy overlay + progress bar between DSP chunks.
+   Without this every stretch/encode froze the whole tab, which is why long
+   exports looked like they had hung. */
+const nextFrame = () => new Promise(r => setTimeout(r, 0));
+async function breathe(state_) {
+  if (!state_) state_ = { t: Date.now() };
+  if (Date.now() - state_.t < 60) return state_;
+  await nextFrame();
+  state_.t = Date.now();
+  return state_;
+}
 
 function hannWindow(n) {
   const w = new Float32Array(n);
@@ -1674,7 +1688,7 @@ function resampleSpeed(buf, factor) {
 }
 
 /* WSOLA time-stretch. speed > 1 => faster / shorter, pitch of grains stays put. */
-function wsolaStretch(buf, speed) {
+async function wsolaStretch(buf, speed) {
   const f = Number(speed);
   if (!isFinite(f) || f <= 0) return cloneBuffer(buf);
   if (Math.abs(f - 1) < 1e-6) return cloneBuffer(buf);
@@ -1699,6 +1713,7 @@ function wsolaStretch(buf, speed) {
   let prevStart = 0;
   const maxStart = Math.max(0, inLen - grain);
 
+  let ui = { t: Date.now() };
   while (outPos < outLen) {
     let start = Math.round(inPos);
     if (outPos > 0) {
@@ -1732,6 +1747,8 @@ function wsolaStretch(buf, speed) {
     outPos += hopOut;
     if (inPos >= inLen && outPos >= outLen) break;
     if (start >= maxStart && inPos > inLen) break;
+    ui = await breathe(ui);
+    busy.prog(Math.min(0.95, outPos / outLen), 'stretching audio…');
   }
 
   const trimmed = getCtx().createBuffer(ch, outLen, sr);
@@ -1739,24 +1756,24 @@ function wsolaStretch(buf, speed) {
   return trimmed;
 }
 
-function timeStretch(buf, tempoFactor, semitones) {
+async function timeStretch(buf, tempoFactor, semitones) {
   const st = Number(semitones) || 0;
   const tempo = Number(tempoFactor) || 1;
   let out = buf;
-  if (Math.abs(st) >= 0.01) out = pitchShiftPreserveTempo(out, st);
-  if (Math.abs(tempo - 1) >= 1e-6) out = wsolaStretch(out, tempo);
+  if (Math.abs(st) >= 0.01) out = await pitchShiftPreserveTempo(out, st);
+  if (Math.abs(tempo - 1) >= 1e-6) out = await wsolaStretch(out, tempo);
   return out;
 }
 
 /* Raise/lower pitch by `semitones` and time-stretch back so duration matches. */
-function pitchShiftPreserveTempo(buf, semitones) {
+async function pitchShiftPreserveTempo(buf, semitones) {
   const st = Number(semitones) || 0;
   if (Math.abs(st) < 0.01) return cloneBuffer(buf);
   const ratio = Math.pow(2, st / 12);
   // resampleSpeed(ratio) plays faster → higher pitch, shorter file
   const pitched = resampleSpeed(buf, ratio);
   // stretch back to original length (speed = 1/ratio)
-  return wsolaStretch(pitched, 1 / ratio);
+  return await wsolaStretch(pitched, 1 / ratio);
 }
 
 const curveCanvas = $('#curveCanvas');
@@ -1765,8 +1782,16 @@ let curvePoints = [{ t: 0, v: 1 }, { t: 1, v: 1 }];
 let curveDragIdx = -1;
 let curveSelIdx = 0;
 let curveInterp = 'linear';
+/* Snapping is opt-in. By default every point keeps whatever value you drag it to
+   (0.001× resolution) — nothing is forced onto the curve. */
+let curveSnapOn = false;
 const SPEED_MIN = 0.25, SPEED_MAX = 4.0;
 const SNAP_SPEEDS = [0.25, 0.50, 0.75, 0.90, 1.00, 1.15, 1.30, 1.50, 2.00, 3.00, 4.00];
+
+function sortCurve() {
+  curvePoints.sort((a, b) => a.t - b.t);
+  return curvePoints;
+}
 
 function resetCurveDefault() {
   curvePoints = [{ t: 0, v: 1 }, { t: 1, v: 1 }];
@@ -1830,7 +1855,7 @@ function drawCurve(playheadProgress) {
     curveCtx.fillText(g + '×', 4, y + 4);
   }
 
-  const pts = curvePoints.slice().sort((a, b) => a.t - b.t);
+  const pts = curvePoints;
   curveCtx.strokeStyle = mint; curveCtx.lineWidth = 2.5;
   curveCtx.beginPath();
   for (let i = 0; i < 200; i++) {
@@ -1905,6 +1930,10 @@ function evalCurveAt(pts, t) {
   return 1;
 }
 
+function clampSpeed(v) {
+  return Math.max(SPEED_MIN, Math.min(SPEED_MAX, v));
+}
+
 function snapSpeed(v) {
   const y = speedToY(v);
   let best = v, bestD = 7; // px
@@ -1915,14 +1944,35 @@ function snapSpeed(v) {
   return best;
 }
 
+/* Only snaps when snapping was explicitly asked for (toggle on, or shift held).
+   Otherwise the raw value survives, rounded to 3 decimals so the number you see
+   is the number that gets rendered. */
+function resolveCurveSpeed(v, forceSnap) {
+  v = clampSpeed(v);
+  if (curveSnapOn || forceSnap) return clampSpeed(snapSpeed(v));
+  return Math.round(v * 1000) / 1000;
+}
+
+function setCurveSnap(on) {
+  curveSnapOn = !!on;
+  const btn = $('#btnCurveSnap');
+  if (btn) {
+    btn.textContent = curveSnapOn ? 'snap on' : 'snap off';
+    btn.classList.toggle('btn-primary', curveSnapOn);
+    btn.classList.toggle('btn-ghost', !curveSnapOn);
+    btn.setAttribute('aria-pressed', curveSnapOn ? 'true' : 'false');
+  }
+  toast(curveSnapOn ? 'curve snapping on — points land on presets' : 'curve snapping off — any value', 'ok');
+}
+
 function syncCurvePointEdit() {
   const meta = $('#curvePointMeta');
   const inp = $('#curvePointVal');
   if (!inp) return;
   const p = curvePoints[curveSelIdx];
   if (!p) { if (meta) meta.textContent = 'click a point, then type the exact speed'; return; }
-  inp.value = p.v.toFixed(2);
-  if (meta) meta.textContent = 't=' + Math.round(p.t * 100) + '%  ·  ' + p.v.toFixed(2) + '×';
+  inp.value = (Math.round(p.v * 1000) / 1000).toString();
+  if (meta) meta.textContent = 't=' + (Math.round(p.t * 1000) / 10) + '%  ·  ' + p.v.toFixed(3) + '×';
 }
 
 function updateCurveStats() {
@@ -1965,10 +2015,11 @@ curveCanvas.addEventListener('pointerdown', (e) => {
     curveCanvas.setPointerCapture(e.pointerId);
     syncCurvePointEdit();
   } else {
-    const t = xToTime(x), v = snapSpeed(yToSpeed(y));
-    curvePoints.push({ t, v });
-    curvePoints.sort((a, b) => a.t - b.t);
-    curveDragIdx = curvePoints.findIndex(p => p.t === t && p.v === v);
+    const t = xToTime(x), v = resolveCurveSpeed(yToSpeed(y), e.shiftKey);
+    const p = { t, v };
+    curvePoints.push(p);
+    sortCurve();
+    curveDragIdx = curvePoints.indexOf(p);
     curveSelIdx = curveDragIdx;
     curveCanvas.setPointerCapture(e.pointerId);
     drawCurve(); updateCurveStats(); syncCurvePointEdit(); updatePending();
@@ -1984,15 +2035,15 @@ curveCanvas.addEventListener('pointermove', (e) => {
   if (!isEdge) p.t = xToTime(x);
   else if (curveDragIdx === 0) p.t = 0;
   else p.t = 1;
-  p.v = yToSpeed(y);
-  curvePoints.sort((a, b) => a.t - b.t);
+  p.v = resolveCurveSpeed(yToSpeed(y), e.shiftKey);
+  sortCurve();
   curveDragIdx = curvePoints.indexOf(p);
   curveSelIdx = curveDragIdx;
   drawCurve(); updateCurveStats(); syncCurvePointEdit();
 });
 curveCanvas.addEventListener('pointerup', () => {
+  // No post-drag snapping any more: whatever the pointer landed on is kept.
   if (curveDragIdx >= 0 && curvePoints[curveDragIdx]) {
-    curvePoints[curveDragIdx].v = snapSpeed(curvePoints[curveDragIdx].v);
     curveSelIdx = curveDragIdx;
     drawCurve(); updateCurveStats(); syncCurvePointEdit(); updatePending();
   }
@@ -2021,11 +2072,14 @@ if (curveInterpSeg) curveInterpSeg.addEventListener('click', (e) => {
  $('#curvePointVal').addEventListener('change', () => {
   const p = curvePoints[curveSelIdx];
   if (!p) return;
-  let v = parseFloat($('#curvePointVal').value);
+  const v = parseFloat($('#curvePointVal').value);
   if (!isFinite(v)) return;
-  p.v = Math.max(SPEED_MIN, Math.min(SPEED_MAX, v));
+  // Typed values are taken literally (only clamped to the drawable 0.25×–4× range).
+  p.v = Math.round(clampSpeed(v) * 1000) / 1000;
   drawCurve(); updateCurveStats(); syncCurvePointEdit(); updatePending();
 });
+ const btnCurveSnap = $('#btnCurveSnap');
+if (btnCurveSnap) btnCurveSnap.addEventListener('click', () => setCurveSnap(!curveSnapOn));
 
  $('#btnApplyCurve').addEventListener('click', async () => {
   if (!state.audioBuffer) return;
@@ -2082,7 +2136,7 @@ function applyCurveResample(buf, pts) {
 }
 
 /* Pitch-locked curve: WSOLA grains whose hop follows the curve. */
-function applyCurveWsola(buf, pts) {
+async function applyCurveWsola(buf, pts) {
   const sr = buf.sampleRate, ch = buf.numberOfChannels, inLen = buf.length;
   let durMul = 0;
   const N = 4000;
@@ -2101,6 +2155,7 @@ function applyCurveWsola(buf, pts) {
   const mix = srcs[0];
   const maxStart = Math.max(0, inLen - grain);
   let inPos = 0, outPos = 0, prevStart = 0;
+  let ui = { t: Date.now() };
   while (outPos < outLen && inPos < inLen) {
     const spd = Math.max(SPEED_MIN, Math.min(SPEED_MAX, evalCurveAt(pts, Math.min(1, inPos / inLen))));
     let start = Math.round(inPos);
@@ -2128,7 +2183,8 @@ function applyCurveWsola(buf, pts) {
     prevStart = start;
     inPos += hopOut * spd;
     outPos += hopOut;
-    if (outPos % (hopOut * 40) === 0) busy.prog(outPos / outLen, 'pitch-locked curve…');
+    ui = await breathe(ui);
+    busy.prog(Math.min(0.95, outPos / outLen), 'pitch-locked curve…');
   }
   const trimmed = getCtx().createBuffer(ch, outLen, sr);
   for (let c = 0; c < ch; c++) trimmed.getChannelData(c).set(dsts[c].subarray(0, outLen));
@@ -2206,9 +2262,69 @@ async function tryAutoExtractCover(notify = false) {
 
 function extractCover(bytes, mime) {
   const m = (mime || '').toLowerCase();
-  if (m.includes('mpeg') || m.includes('mp3')) return extractCoverID3(bytes);
+  if (m.includes('mpeg') || m.includes('mp3')) return extractCoverID3(bytes) || extractCoverMP4(bytes);
   if (m.includes('flac')) return extractCoverFLAC(bytes);
-  return extractCoverID3(bytes) || extractCoverFLAC(bytes);
+  return extractCoverID3(bytes) || extractCoverFLAC(bytes) || extractCoverMP4(bytes);
+}
+
+/* m4a / mp4: the art lives in moov.udta.meta.ilst.covr as a `data` atom.
+   Walks the atom tree instead of guessing offsets. */
+function extractCoverMP4(bytes) {
+  if (bytes.length < 16) return null;
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const typeAt = (o) => String.fromCharCode(bytes[o], bytes[o + 1], bytes[o + 2], bytes[o + 3]);
+  const CONTAINERS = ['moov', 'udta', 'meta', 'ilst', 'trak', 'mdia', 'minf', 'stbl'];
+
+  const findDataAtom = (start, end) => {
+    let q = start;
+    while (q + 16 <= end) {
+      let size = dv.getUint32(q);
+      const type = typeAt(q + 4);
+      if (size < 8 || q + size > end) return null;
+      if (type === 'data') {
+        const data = bytes.subarray(q + 16, q + size);
+        if (!data.length) return null;
+        let mime = 'image/jpeg';
+        if (data[0] === 0x89 && data[1] === 0x50) mime = 'image/png';
+        else if (data[0] === 0x47 && data[1] === 0x49) mime = 'image/gif';
+        else if (data[0] === 0x42 && data[1] === 0x4d) mime = 'image/bmp';
+        return { data: new Uint8Array(data), mime };
+      }
+      q += size;
+    }
+    return null;
+  };
+
+  const walk = (start, end) => {
+    let p = start;
+    while (p + 8 <= end) {
+      let size = dv.getUint32(p);
+      const type = typeAt(p + 4);
+      let header = 8;
+      if (size === 1) {
+        if (p + 16 > end) break;
+        size = dv.getUint32(p + 8) * 4294967296 + dv.getUint32(p + 12);
+        header = 16;
+      } else if (size === 0) {
+        size = end - p;
+      }
+      if (size < header || p + size > end) break;
+      const bodyStart = p + header;
+      if (type === 'covr') {
+        const found = findDataAtom(bodyStart, p + size);
+        if (found) return found;
+      } else if (CONTAINERS.includes(type)) {
+        // `meta` carries a 4-byte version/flags field before its children.
+        const inner = type === 'meta' ? bodyStart + 4 : bodyStart;
+        const found = walk(inner, p + size);
+        if (found) return found;
+      }
+      p += size;
+    }
+    return null;
+  };
+
+  return walk(0, bytes.length);
 }
 
 function extractCoverID3(bytes) {
@@ -2292,13 +2408,17 @@ function audioBufferToWavBlob(buf) {
   return new Blob([audioBufferToWavBytes(buf)], { type: 'audio/wav' });
 }
 
-function audioBufferToWavBytes(buf) {
+/* WAV, 16-bit PCM. If a cover is loaded it rides along in an "id3 " chunk,
+   which is the RIFF convention players like VLC / foobar2000 / Mp3tag read. */
+function audioBufferToWavBytes(buf, cover = null) {
   const ch = buf.numberOfChannels, sr = buf.sampleRate;
   const N = buf.length;
   const blockAlign = ch * 2;
   const byteRate = sr * blockAlign;
   const dataSize = N * blockAlign;
-  const total = 44 + dataSize;
+  const tag = coverArtBytes(cover);
+  const tagChunk = tag ? 8 + tag.length + (tag.length & 1) : 0;
+  const total = 44 + dataSize + tagChunk;
   const ab = new ArrayBuffer(total);
   const dv = new DataView(ab);
   const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(off + i, s.charCodeAt(i)); };
@@ -2320,30 +2440,100 @@ function audioBufferToWavBytes(buf) {
       off += 2;
     }
   }
+
+  if (tag) {
+    const p = 44 + dataSize;
+    writeStr(p, 'id3 ');
+    dv.setUint32(p + 4, tag.length, true);
+    new Uint8Array(ab).set(tag, p + 8);
+  }
   return new Uint8Array(ab);
 }
 
-function audioBufferToMp3Bytes(buf, kbps = 320, cover = null) {
-  if (!window.lamejs) throw new Error('lamejs not loaded');
+/* ---- mp3 ------------------------------------------------------------- */
+
+const MP3_RATES = [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000];
+
+/* lamejs occasionally isn't there yet (slow CDN, blocked request, cache miss).
+   Try once more before giving up instead of silently dying mid-export. */
+async function ensureLame() {
+  if (window.lamejs && window.lamejs.Mp3Encoder) return true;
+  try {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/lamejs@1.2.1/lame.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('lamejs request failed'));
+      document.head.appendChild(s);
+    });
+  } catch (err) { console.warn('lamejs load retry failed:', err); }
+  return !!(window.lamejs && window.lamejs.Mp3Encoder);
+}
+
+/* LAME only knows a handful of sample rates. If the AudioContext ran at, say,
+   96 kHz (common on macOS with an external interface) the old encoder threw
+   during construction and the export died before writing a single frame. */
+async function resampleForEncoder(buf, targetRate) {
+  if (buf.sampleRate === targetRate) return buf;
   const ch = Math.min(2, buf.numberOfChannels);
-  const sr = buf.sampleRate;
-  const enc = new lamejs.Mp3Encoder(ch, sr, kbps);
-  const N = buf.length;
-  const block = 1152;
-  const left = floatTo16(buf.getChannelData(0));
-  const right = ch > 1 ? floatTo16(buf.getChannelData(1)) : null;
-  const parts = [];
-  for (let i = 0; i < N; i += block) {
-    const l = left.subarray(i, i + block);
-    let frame;
-    if (ch === 1) frame = enc.encodeBuffer(l);
-    else frame = enc.encodeBuffer(l, right.subarray(i, i + block));
-    if (frame && frame.length) parts.push(frame);
-    if (i % (block * 200) === 0) busy.prog(0.5 + 0.4 * (i / N), 'encoding mp3 ' + Math.round(100 * i / N) + '%');
+  const off = new OfflineAudioContext(ch, Math.max(1, Math.ceil(buf.duration * targetRate)), targetRate);
+  const src = off.createBufferSource();
+  src.buffer = buf;
+  src.connect(off.destination);
+  src.start();
+  return await off.startRendering();
+}
+
+function toInt16(view, start, len) {
+  const out = new Int16Array(len);
+  const end = Math.min(view.length, start + len);
+  for (let i = start; i < end; i++) {
+    let s = view[i];
+    s = s < -1 ? -1 : (s > 1 ? 1 : s);
+    out[i - start] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
+  return out;
+}
+
+/* Encodes in chunks and hands the main thread back between them, so the busy
+   bar actually moves and the tab doesn't look dead during a long song. */
+async function audioBufferToMp3Bytes(buf, kbps = 320, cover = null) {
+  if (!(await ensureLame())) {
+    throw new Error('mp3 encoder unavailable (offline or CDN blocked) — try the WAV export');
+  }
+  let src = buf;
+  if (!MP3_RATES.includes(src.sampleRate)) {
+    busy.prog(0.03, 'resampling to 48 kHz for the mp3 encoder…');
+    await nextFrame();
+    src = await resampleForEncoder(src, 48000);
+  }
+
+  const ch = Math.min(2, src.numberOfChannels);
+  const enc = new lamejs.Mp3Encoder(ch, src.sampleRate, kbps);
+  const left = src.getChannelData(0);
+  const right = ch > 1 ? src.getChannelData(1) : null;
+  const N = src.length;
+  const block = 1152 * 16;
+  const parts = [];
+  let ui = { t: Date.now() };
+
+  for (let i = 0; i < N; i += block) {
+    const len = Math.min(block, N - i);
+    const l = toInt16(left, i, len);
+    const r = right ? toInt16(right, i, len) : null;
+    const frame = ch === 1 ? enc.encodeBuffer(l) : enc.encodeBuffer(l, r);
+    if (frame && frame.length) parts.push(frame);
+    busy.prog(0.05 + 0.9 * (i / N), 'encoding mp3 · ' + Math.round(100 * i / N) + '%');
+    ui = await breathe(ui);
+  }
+
+  busy.prog(0.97, 'writing mp3 frames…');
+  await nextFrame();
   const tail = enc.flush();
   if (tail && tail.length) parts.push(tail);
-  let totalLen = parts.reduce((s, p) => s + p.length, 0);
+
+  let totalLen = 0;
+  for (const p of parts) totalLen += p.length;
   const mp3 = new Uint8Array(totalLen);
   let off = 0;
   for (const p of parts) { mp3.set(p, off); off += p.length; }
@@ -2353,6 +2543,7 @@ function audioBufferToMp3Bytes(buf, kbps = 320, cover = null) {
   }
   return mp3;
 }
+
 function floatTo16(arr) {
   const out = new Int16Array(arr.length);
   for (let i = 0; i < arr.length; i++) {
@@ -2362,20 +2553,33 @@ function floatTo16(arr) {
   return out;
 }
 
-function prependID3v2WithCover(mp3, cover) {
+function coverArtBytes(cover) {
+  if (!cover || !cover.data || !cover.data.length) return null;
   const title = (state.fileName || 'teenytuning').replace(/\.[^.]+$/, '');
-  const titleFrame = makeTextFrame('TIT2', title);
-  const apicFrame = makeAPICFrame(cover.data, cover.mime || 'image/jpeg');
-  const body = concatU8([titleFrame, apicFrame]);
-  const size = body.length;
+  return buildID3Tag(cover, title);
+}
 
-  const ss = [(size >> 21) & 0x7f, (size >> 14) & 0x7f, (size >> 7) & 0x7f, size & 0x7f];
+/* One ID3v2.3 tag builder, shared by the mp3 and wav writers. */
+function buildID3Tag(cover, title) {
+  const frames = [];
+  if (title) frames.push(makeTextFrame('TIT2', title));
+  if (cover && cover.data && cover.data.length) {
+    frames.push(makeAPICFrame(cover.data, cover.mime || 'image/jpeg'));
+  }
+  if (!frames.length) return null;
+  const body = concatU8(frames);
+  const size = body.length;
   const header = new Uint8Array(10);
-  header[0] = 0x49; header[1] = 0x44; header[2] = 0x33;
-  header[3] = 0x03; header[4] = 0x00;
-  header[5] = 0x00;
-  header[6] = ss[0]; header[7] = ss[1]; header[8] = ss[2]; header[9] = ss[3];
-  return concatU8([header, body, mp3]);
+  header[0] = 0x49; header[1] = 0x44; header[2] = 0x33;  // "ID3"
+  header[3] = 0x03; header[4] = 0x00; header[5] = 0x00;  // v2.3.0, no flags
+  header[6] = (size >> 21) & 0x7f; header[7] = (size >> 14) & 0x7f;
+  header[8] = (size >> 7) & 0x7f;  header[9] = size & 0x7f;
+  return concatU8([header, body]);
+}
+
+function prependID3v2WithCover(mp3, cover) {
+  const tag = coverArtBytes(cover);
+  return tag ? concatU8([tag, mp3]) : mp3;
 }
 function makeTextFrame(id, text) {
   const enc = new TextEncoder();
@@ -2412,12 +2616,16 @@ function concatU8(arrs) {
 
 function download(bytes, name, mime) {
   const blob = new Blob([bytes], { type: mime });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
+  a.href = url;
   a.download = name;
+  a.rel = 'noopener';
+  a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  // Revoking after 500 ms cancelled the save on slower disks / Safari.
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 60000);
 }
 
 async function processExport() {
@@ -2444,12 +2652,16 @@ async function processExport() {
 
   const speedVal = parseFloat($('#speedRange').value);
   if (Math.abs(speedVal - 1) > 0.001) {
-    exportBuffer = state.pitchLock ? timeStretch(exportBuffer, speedVal, 0) : resampleSpeed(exportBuffer, speedVal);
+    busy.prog(0.05, state.pitchLock ? 'stretching (pitch-locked)…' : 'resampling…');
+    exportBuffer = state.pitchLock
+      ? await timeStretch(exportBuffer, speedVal, 0)
+      : resampleSpeed(exportBuffer, speedVal);
   }
 
   const pitchVal = parseFloat($('#pitchRange').value);
   if (Math.abs(pitchVal) > 0.05) {
-    exportBuffer = timeStretch(exportBuffer, 1, pitchVal);
+    busy.prog(0.15, 'shifting pitch (tempo held)…');
+    exportBuffer = await timeStretch(exportBuffer, 1, pitchVal);
   }
 
   const pts = curvePoints.slice().sort((a, b) => a.t - b.t);
@@ -2469,26 +2681,28 @@ async function processExport() {
   busy.show('preparing export...');
   await new Promise(r => setTimeout(r, 20));
   
+  const hasCover = !!(state.cover && state.cover.data && state.cover.data.length);
   try {
     const exportBuf = await processExport();
     if (fmt === 'wav') {
-      busy.show('encoding wav…');
+      busy.prog(0.9, 'writing wav…');
       await new Promise(r => setTimeout(r, 20));
-      const bytes = audioBufferToWavBytes(exportBuf);
+      const bytes = audioBufferToWavBytes(exportBuf, state.cover);
       download(bytes, base + '_teenytuning.wav', 'audio/wav');
       busy.hide();
-      toast('exported wav', 'ok');
+      toast(hasCover ? 'exported wav · cover in id3 chunk' : 'exported wav', 'ok');
     } else if (fmt === 'mp3') {
       busy.show('encoding mp3…');
       await new Promise(r => setTimeout(r, 20));
-      const bytes = audioBufferToMp3Bytes(exportBuf, 320, state.cover);
+      const bytes = await audioBufferToMp3Bytes(exportBuf, 320, state.cover);
       download(bytes, base + '_teenytuning.mp3', 'audio/mpeg');
       busy.hide();
-      toast('exported mp3', 'ok');
+      toast(hasCover ? 'exported mp3 · cover embedded' : 'exported mp3 · no cover loaded', hasCover ? 'ok' : 'err');
     }
   } catch (err) {
+    console.error(err);
     busy.hide();
-    toast('export failed: ' + err.message, 'err');
+    toast('export failed: ' + (err && err.message ? err.message : err), 'err');
   }
 }));
 
@@ -2576,17 +2790,45 @@ function drawFadeOverlay() {
   overlay.innerHTML = parts.join('');
 }
 
+function setPreservesPitch(el, on) {
+  if (!el) return;
+  el.preservesPitch = on;
+  el.mozPreservesPitch = on;
+  el.webkitPreservesPitch = on;
+}
+
+/* Live pitch preview.
+   Moving pitch without moving tempo needs a real DSP stage in the audio graph
+   (that's what the AudioWorklet route on vocalremover.org does). The cheap,
+   always-available version — and what sites use for a "pitch" slider that
+   responds the instant you drag it — is a playback-rate shift with pitch
+   preservation switched off. So: drag = instant pitch+tempo preview, Save =
+   bake a true tempo-preserving shift. */
+function pitchPreviewRate() {
+  const onPitchTab = (document.querySelector('.tab.active')?.dataset?.tab) === 'pitch';
+  if (!onPitchTab || !state.audioBuffer) return null;
+  const semis = parseFloat($('#pitchRange')?.value) || 0;
+  if (Math.abs(semis) < 0.05) return null;
+  return Math.pow(2, semis / 12);
+}
+
 function applyPitchPreview() {
-  // Preview must not change tempo. Real pitch is baked on Save.
-  // (HTML playbackRate always couples pitch and speed.)
   if (!state.ws) return;
   const el = PreviewEngine.attachedTo;
-  if (el) {
-    el.preservesPitch = state.livePreview.pitchLock;
-    el.mozPreservesPitch = state.livePreview.pitchLock;
-    el.webkitPreservesPitch = state.livePreview.pitchLock;
+  const rate = pitchPreviewRate();
+  const note = $('#pitchLiveNote');
+  if (rate === null) {
+    setPreservesPitch(el, state.livePreview.pitchLock);
+    state.ws.setPlaybackRate(state.livePreview.speed || 1, state.livePreview.pitchLock);
+    if (note) note.innerHTML = 'Live preview is a real-time playback-rate shift, so it moves pitch <b>and</b> tempo — that\u2019s why it responds instantly.';
+    return;
   }
-  state.ws.setPlaybackRate(state.livePreview.speed || 1, state.livePreview.pitchLock);
+  setPreservesPitch(el, false);
+  state.ws.setPlaybackRate(rate, false);
+  if (note) {
+    const st = parseFloat($('#pitchRange').value) || 0;
+    note.innerHTML = 'live preview · <b>' + (st >= 0 ? '+' : '') + st.toFixed(1) + ' st</b> at ' + rate.toFixed(2) + '× speed (pitch and tempo move together)';
+  }
 }
 function clearPitchPreview() { applyPitchPreview(); }
 
@@ -2687,7 +2929,7 @@ if (state.audioBuffer) { drawFadeOverlay(); }
 requestAnimationFrame(() => { sizeCurveCanvas(); drawCurve(); updateCurveStats(); updatePending(); });
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fbd2448ac5c263',t:'MTc5Mjg3NDY4Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 
 </html>
