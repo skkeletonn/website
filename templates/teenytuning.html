@@ -53,6 +53,13 @@
   --nav-border: rgba(255,255,255,.06);
   --stage-bg: rgba(0, 0, 0, 0.3);
   --stage-shadow: inset 0 1px 0 rgba(110,231,183,.08), inset 0 -40px 80px rgba(0,0,0,.4);
+
+  /* waveform keeps its own, brighter palette so it never disappears into the
+     accent-coloured chrome */
+  --wave: #cfe9d4;
+  --wave-progress: #6ee787;
+  --wave-cursor: #f2fff5;
+  --wave-region: rgba(110, 231, 135, 0.16);
 }
 
 
@@ -542,7 +549,7 @@ footer {
       <button class="btn btn-ghost" id="changeFile">change</button>
     </div>
 
-    <div class="wave-hint">Drag the green region to trim · Click outside to seek</div>
+    <div class="wave-hint">Drag the highlighted region to trim · Click outside to seek</div>
     <div class="wave-stage playhead-grab" id="waveStage">
       <div id="waveform"></div>
       <svg class="fade-overlay" id="fadeOverlay" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
@@ -1110,9 +1117,13 @@ async function mountWavesurfer(buf) {
 
   state.ws = WS.create({
     container: '#waveform',
-    waveColor: getCss('--mint-3'),
-    progressColor: getCss('--mint-deep'),
-    cursorColor: getCss('--mint-3'),
+    waveColor: getCss('--wave') || '#cfe9d4',
+    progressColor: getCss('--wave-progress') || '#6ee787',
+    cursorColor: getCss('--wave-cursor') || '#ffffff',
+    barWidth: 2,
+    barRadius: 2,
+    barGap: 2,
+    normalize: true,
     cursorWidth: 2,
     height: 132,
     barWidth: 2,
@@ -1130,7 +1141,7 @@ async function mountWavesurfer(buf) {
       state.wsRegions.clearRegions();
       const r = state.wsRegions.addRegion({
         start: 0, end: buf.duration,
-        color: 'rgba(76,175,80,0.18)',
+        color: getCss('--wave-region') || 'rgba(110,231,135,0.16)',
         drag: true, resize: true,
       });
       r.on('update-end', () => {
@@ -2326,7 +2337,12 @@ function concatBuffers(chunks) {
 /* ---------- artwork-driven theme -------------------------------------- */
 
 const THEME_KEYS = ['--mint', '--mint-2', '--mint-3', '--mint-deep', '--mint-glow',
-  '--bg', '--bg-2', '--body-grad-top', '--body-grad-bot', '--body-glow'];
+  '--bg', '--bg-2', '--body-grad-top', '--body-grad-bot', '--body-glow',
+  // the card, panels, transport and nav all sit on these — without them the
+  // editor stays default-green inside a tinted page
+  '--surface', '--surface-2', '--elev', '--stage-bg', '--stage-shadow', '--nav-grad-top', '--nav-grad-bot',
+  // waveform palette
+  '--wave', '--wave-progress', '--wave-cursor', '--wave-region'];
 const COVER_TINT_KEY = 'teenytuning-cover-tint';
 let coverTintOn = (() => {
   try { return localStorage.getItem(COVER_TINT_KEY) !== 'off'; } catch (_) { return true; }
@@ -2346,7 +2362,17 @@ function rgbToHsl(r, g, b) {
   return [h, s, l];
 }
 
+function hsla(h, s, l, a) {
+  const hex = hslToHex(h, s / 100, l);
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+
 function hslToHex(h, s, l) {
+  s = Math.max(0, Math.min(1, s));
+  l = Math.max(0, Math.min(1, l));
   const a = s * Math.min(l, 1 - l);
   const f = (n) => {
     const k = (n + h / 30) % 12;
@@ -2360,11 +2386,16 @@ function repaintAccents() {
   if (state.ws) {
     try {
       state.ws.setOptions({
-        waveColor: getCss('--mint-3'),
-        progressColor: getCss('--mint-deep'),
-        cursorColor: getCss('--mint-3'),
+        waveColor: getCss('--wave'),
+        progressColor: getCss('--wave-progress'),
+        cursorColor: getCss('--wave-cursor'),
       });
     } catch (_) {}
+    if (state.wsRegions) {
+      try {
+        state.wsRegions.getRegions().forEach(r => r.setOptions({ color: getCss('--wave-region') }));
+      } catch (_) {}
+    }
   }
   drawCurve();
 }
@@ -2392,6 +2423,26 @@ function applyPalette(hue, sat) {
   st.setProperty('--body-grad-top', hslToHex(H, (S * 0.30) / 100, 0.055));
   st.setProperty('--body-grad-bot', hslToHex(H, (S * 0.38) / 100, 0.025));
   st.setProperty('--body-glow', 'hsla(' + H + ',' + Math.min(95, S + 10) + '%,55%,.16)');
+
+  /* Surfaces: same dark, low-light values as the stock theme, just carrying the
+     artwork's hue, with the original alphas so the glass look survives. */
+  const Ss = S * 0.42;          // keep panels desaturated, they hold the text
+  st.setProperty('--surface', hsla(H, Ss, 0.105, 0.78));
+  st.setProperty('--surface-2', hsla(H, Ss + 4, 0.15, 0.60));
+  st.setProperty('--elev', hslToHex(H, (Ss * 0.9) / 100, 0.14));
+  st.setProperty('--stage-bg', hsla(H, Ss, 0.035, 0.34));
+  st.setProperty('--nav-grad-top', hsla(H, S * 0.30, 0.05, 0.88));
+  st.setProperty('--nav-grad-bot', hsla(H, S * 0.30, 0.05, 0.55));
+
+  /* Waveform: deliberately NOT the accent colour — a bright, barely-tinted
+     near-white for the body and a hot accent for the played portion. */
+  st.setProperty('--wave', hslToHex(H, 0.46, 0.82));
+  st.setProperty('--wave-progress', hslToHex(H, 0.92, 0.64));
+  st.setProperty('--wave-cursor', hslToHex(H, 1, 0.92));
+  st.setProperty('--wave-region', hsla(H, 92, 0.60, 0.16));
+  st.setProperty('--stage-shadow',
+    'inset 0 1px 0 ' + hsla(H, 70, 0.70, 0.07) + ', inset 0 -40px 80px rgba(0,0,0,.4)');
+
   repaintAccents();
 }
 
@@ -3397,7 +3448,7 @@ if (state.audioBuffer) { drawFadeOverlay(); }
 requestAnimationFrame(() => { sizeCurveCanvas(); drawCurve(); updateCurveStats(); updatePending(); });
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fbf4579f3ec263',t:'MTc5Mjg3NjA4MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fc0ee5a88dc263',t:'MTc5Mjg3NzE2OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 
 </html>
