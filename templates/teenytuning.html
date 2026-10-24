@@ -2107,6 +2107,26 @@ function findFadeKnee(envDb, from, to) {
   return { knee: from + bestK, bodyLevel, drop };
 }
 
+/* The knee fit can land slightly before the audible start (a straight line
+   through a curved fade extrapolates backwards). Walk it forward to the first
+   window that has actually dropped, so the lift never touches full-level audio.
+   Erring late costs at most a ~1 dB residual dip; erring early audibly boosts
+   the wrong thing. */
+function refineKnee(smoothDb, kneeW, from, to, bodyDb, direction, winSec) {
+  const TOL = 0.4;                                   // dB below the body level
+  const maxShift = Math.max(1, Math.round(0.4 / winSec));
+  if (direction === 'out') {
+    let k = kneeW;
+    const limit = Math.min(to - 1, kneeW + maxShift);
+    while (k < limit && smoothDb[k] > bodyDb - TOL) k++;
+    return k;
+  }
+  let k = kneeW;
+  const limit = Math.max(from, kneeW - maxShift);
+  while (k > limit && smoothDb[k] > bodyDb - TOL) k--;
+  return k;
+}
+
 async function autoFade(direction) {
   if (!state.audioBuffer) return;
   const buf = state.audioBuffer, sr = buf.sampleRate;
@@ -2117,7 +2137,7 @@ async function autoFade(direction) {
   busy.show('measuring levels…');
   await new Promise(r => setTimeout(r, 20));
 
-  const { env, win } = rmsEnvelope(buf, 0.05);
+  const { env, win } = rmsEnvelope(buf, 0.025);
   const winSamples = win;
   const db = (x) => 20 * Math.log10(Math.max(1e-6, x));
   const idxOf = (sec) => Math.max(0, Math.min(env.length, Math.round((sec * sr) / win)));
@@ -2127,7 +2147,7 @@ async function autoFade(direction) {
 
   /* smooth the level curve (~250 ms) so musical noise doesn't fake a knee */
   const smoothDb = new Float32Array(env.length);
-  const R = 2;
+  const R = 5;
   for (let i = 0; i < env.length; i++) {
     let sum = 0, n = 0;
     for (let j = Math.max(w0, i - R); j <= Math.min(w1 - 1, i + R); j++) { sum += envDb[j]; n++; }
@@ -2148,6 +2168,9 @@ async function autoFade(direction) {
     kneeW = w1 - 1 - r.knee; bodyDb = r.bodyLevel; dropDb = r.drop;
   }
 
+  const winSec = winSamples / sr;
+  kneeW = refineKnee(smoothDb, kneeW, w0, w1, bodyDb, direction, winSec);
+
   const kneeSec = (kneeW * winSamples) / sr;
   const bodyLevel = Math.pow(10, bodyDb / 20);
 
@@ -2158,10 +2181,14 @@ async function autoFade(direction) {
   const gains = new Float32Array(env.length).fill(1);
   const region = direction === 'out' ? [kneeW, w1] : [w0, kneeW + 1];
   for (let w = region[0]; w < region[1]; w++) {
-    gains[w] = Math.min(MAX_GAIN, Math.max(1, bodyLevel / Math.max(1e-5, env[w])));
+    /* Use the louder of this window and the one nearer the body: a window that
+       straddles a level step must never be lifted as if it were all quiet. */
+    const nb = direction === 'out' ? Math.max(w0, w - 1) : Math.min(w1 - 1, w + 1);
+    const lvl = Math.max(env[w], env[nb]);
+    gains[w] = Math.min(MAX_GAIN, Math.max(1, bodyLevel / Math.max(1e-5, lvl)));
   }
   /* ease in out of the correction so the seam is inaudible */
-  const easeN = Math.max(1, Math.round(0.15 / 0.05));
+  const easeN = Math.max(1, Math.round(0.15 / (winSamples / sr)));
   if (direction === 'out') {
     for (let i = 0; i < easeN; i++) {
       const w = kneeW + i;
@@ -3939,7 +3966,7 @@ if (state.audioBuffer) { drawFadeOverlay(); }
 requestAnimationFrame(() => { sizeCurveCanvas(); drawCurve(); updateCurveStats(); updatePending(); });
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fc73a7ad1cc263',t:'MTc5Mjg4MTI5Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fc7dfc2b5bc263',t:'MTc5Mjg4MTcxOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 
 </html>
