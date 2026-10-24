@@ -2055,63 +2055,137 @@ function levelBetween(env, from, to) {
   return n ? Math.sqrt(sum / n) : 0;
 }
 
+/* Two-segment "knee" fit on the level curve (in dB): the body is flat, the fade
+   is a straight downward ramp. Prefix sums make each candidate O(1), so this
+   stays fast even on a long track. Returns the window index where the fade
+   starts, or -1 when there is no convincing downward ramp. */
+function findFadeKnee(envDb, from, to) {
+  const n = to - from;
+  if (n < 8) return null;
+  const sx = new Float64Array(n + 1), sy = new Float64Array(n + 1);
+  const sxx = new Float64Array(n + 1), syy = new Float64Array(n + 1), sxy = new Float64Array(n + 1);
+  for (let i = 0; i < n; i++) {
+    const x = i, y = envDb[from + i];
+    sx[i + 1] = sx[i] + x;       sy[i + 1] = sy[i] + y;
+    sxx[i + 1] = sxx[i] + x * x; syy[i + 1] = syy[i] + y * y;
+    sxy[i + 1] = sxy[i] + x * y;
+  }
+  const flatSSE = (a, b, level) => {
+    const m = b - a;
+    if (m <= 0) return 0;
+    const SY = sy[b] - sy[a], SYY = syy[b] - syy[a];
+    return Math.max(0, SYY - 2 * level * SY + level * level * m);
+  };
+  const lineFit = (a, b) => {
+    const m = b - a;
+    if (m < 2) return { sse: 0, slope: 0 };
+    const SX = sx[b] - sx[a], SY = sy[b] - sy[a];
+    const SXX = sxx[b] - sxx[a], SYY = syy[b] - syy[a], SXY = sxy[b] - sxy[a];
+    const den = m * SXX - SX * SX;
+    const slope = den === 0 ? 0 : (m * SXY - SX * SY) / den;
+    const icept = (SY - slope * SX) / m;
+    return { sse: Math.max(0, SYY - icept * SY - slope * SXY), slope };
+  };
+
+  /* body level = median of the first third (assumed body) */
+  const probe = [];
+  for (let i = 0; i < Math.max(3, Math.floor(n * 0.35)); i++) probe.push(envDb[from + i]);
+  probe.sort((a, b) => a - b);
+  const bodyLevel = probe[Math.floor(probe.length / 2)];
+
+  const minSeg = Math.max(3, Math.round(n * 0.04));
+  let bestK = -1, bestScore = Infinity, bestSlope = 0;
+  for (let k = minSeg; k <= n - minSeg; k++) {
+    const fit = lineFit(k, n);
+    if (fit.slope > -0.05) continue;                       // want a real downward ramp
+    const score = flatSSE(0, k, bodyLevel) + fit.sse;
+    if (score < bestScore) { bestScore = score; bestK = k; bestSlope = fit.slope; }
+  }
+  if (bestK < 0) return null;
+  const drop = Math.abs(bestSlope) * (n - bestK);          // total dB lost across the ramp
+  if (drop < 3) return null;                               // not really a fade
+  return { knee: from + bestK, bodyLevel, drop };
+}
+
 async function autoFade(direction) {
   if (!state.audioBuffer) return;
   const buf = state.audioBuffer, sr = buf.sampleRate;
   const { start, end } = state.region;
   const selDur = Math.max(0.3, end - start);
+  const wantFade = !!(autoFadeToSilence && autoFadeToSilence.checked);
 
   busy.show('measuring levels…');
   await new Promise(r => setTimeout(r, 20));
 
   const { env, win } = rmsEnvelope(buf, 0.05);
+  const winSamples = win;
+  const db = (x) => 20 * Math.log10(Math.max(1e-6, x));
   const idxOf = (sec) => Math.max(0, Math.min(env.length, Math.round((sec * sr) / win)));
   const w0 = idxOf(start), w1 = idxOf(end);
-  const span = Math.max(1, w1 - w0);
+  const envDb = new Float32Array(env.length);
+  for (let i = 0; i < env.length; i++) envDb[i] = db(env[i]);
 
-  /* Reference = the *loud* parts of the selection: 70th percentile of the middle,
-     so a long quiet stretch can't drag the average down with it. */
-  const midFrom = w0 + Math.floor(span * 0.1);
-  const midTo = Math.max(midFrom + 1, w0 + Math.floor(span * 0.9));
-  const mid = [];
-  for (let w = midFrom; w < midTo; w++) if (env[w] > 1e-5) mid.push(env[w]);
-  mid.sort((a, b) => a - b);
-  const target = Math.max(1e-4, mid.length ? mid[Math.min(mid.length - 1, Math.floor(mid.length * 0.7))] : levelBetween(env, w0, w1));
-  const quiet = target * 0.6;
-
-  /* Where does it go quiet, and how quiet is that bit? */
-  let quietSec, quietLevel, quietLen;
-  if (direction === 'out') {
-    let lastLoud = w0;
-    for (let w = w1 - 1; w >= w0; w--) { if (env[w] >= quiet) { lastLoud = w; break; } }
-    quietSec = start + ((lastLoud - w0) * win) / sr;   /* win is in samples */
-    quietLen = Math.max(0, end - quietSec);
-    quietLevel = levelBetween(env, lastLoud + 1, w1) || levelBetween(env, lastLoud, w1) || target;
-  } else {
-    let firstLoud = w1;
-    for (let w = w0; w < w1; w++) { if (env[w] >= quiet) { firstLoud = w; break; } }
-    quietSec = start + ((firstLoud - w0) * win) / sr;
-    quietLen = Math.max(0, quietSec - start);
-    quietLevel = levelBetween(env, w0, firstLoud - 1) || levelBetween(env, w0, firstLoud) || target;
+  /* smooth the level curve (~250 ms) so musical noise doesn't fake a knee */
+  const smoothDb = new Float32Array(env.length);
+  const R = 2;
+  for (let i = 0; i < env.length; i++) {
+    let sum = 0, n = 0;
+    for (let j = Math.max(w0, i - R); j <= Math.min(w1 - 1, i + R); j++) { sum += envDb[j]; n++; }
+    smoothDb[i] = n ? sum / n : envDb[i];
   }
 
-  /* The lift is anchored on the quiet point itself: ramp in over a short
-     pre-roll, then hold the level at the average for the rest of the quiet
-     stretch. That is the "anti-unfade" — no fade back to silence. */
+  let kneeW, bodyDb, dropDb;
+  if (direction === 'out') {
+    const r = findFadeKnee(smoothDb, w0, w1);
+    if (!r) { busy.hide(); toast('no fade detected on the tail — nothing to un-fade', 'err'); return; }
+    kneeW = r.knee; bodyDb = r.bodyLevel; dropDb = r.drop;
+  } else {
+    /* mirror the curve so the head is analysed with the same fitter */
+    const rev = new Float32Array(w1 - w0);
+    for (let i = 0; i < rev.length; i++) rev[i] = smoothDb[w1 - 1 - i];
+    const r = findFadeKnee(rev, 0, rev.length);
+    if (!r) { busy.hide(); toast('no fade detected on the head — nothing to un-fade', 'err'); return; }
+    kneeW = w1 - 1 - r.knee; bodyDb = r.bodyLevel; dropDb = r.drop;
+  }
+
+  const kneeSec = (kneeW * winSamples) / sr;
+  const bodyLevel = Math.pow(10, bodyDb / 20);
+
+  /* Per-window compensation: gain = body level / current level, so the faded
+     stretch is pulled back up to the average and STAYS there (instead of being
+     multiplied by one constant, which would leave the fade still falling). */
+  const MAX_GAIN = 16;                                    // +24 dB ceiling
+  const gains = new Float32Array(env.length).fill(1);
+  const region = direction === 'out' ? [kneeW, w1] : [w0, kneeW + 1];
+  for (let w = region[0]; w < region[1]; w++) {
+    gains[w] = Math.min(MAX_GAIN, Math.max(1, bodyLevel / Math.max(1e-5, env[w])));
+  }
+  /* ease in out of the correction so the seam is inaudible */
+  const easeN = Math.max(1, Math.round(0.15 / 0.05));
+  if (direction === 'out') {
+    for (let i = 0; i < easeN; i++) {
+      const w = kneeW + i;
+      if (w >= w1) break;
+      const u = (i + 1) / (easeN + 1);
+      gains[w] = 1 + (gains[w] - 1) * (u * u * (3 - 2 * u));
+    }
+  } else {
+    for (let i = 0; i < easeN; i++) {
+      const w = kneeW - i;
+      if (w < w0) break;
+      const u = (i + 1) / (easeN + 1);
+      gains[w] = 1 + (gains[w] - 1) * (u * u * (3 - 2 * u));
+    }
+  }
+  /* smooth the gain curve a touch so it doesn't stair-step */
+  const g2 = new Float32Array(gains);
+  for (let w = region[0]; w < region[1]; w++) {
+    const a = gains[Math.max(region[0], w - 1)], b = gains[w], c = gains[Math.min(region[1] - 1, w + 1)];
+    g2[w] = (a + 2 * b + c) / 4;
+  }
+
   const i0 = Math.max(0, Math.floor(start * sr));
   const i1 = Math.min(buf.length, Math.floor(end * sr));
-  const quietIdx = Math.max(i0, Math.min(i1, Math.round(quietSec * sr)));
-  const hasQuiet = quietLen >= 0.15;
-
-  let gain = hasQuiet ? Math.max(1, Math.min(6, target / Math.max(1e-4, quietLevel))) : 1;
-
-  /* The ramp lives *inside* the quiet stretch, so the parts that weren't fading
-     are never boosted. */
-  const quietSpan = direction === 'out' ? (i1 - quietIdx) : (quietIdx - i0);
-  const rampLen = Math.max(0.12 * sr, Math.min(0.45 * sr, quietSpan * 0.4));
-  const rampFrom = direction === 'out' ? quietIdx : Math.max(i0, quietIdx - Math.round(rampLen));
-  const rampTo = direction === 'out' ? Math.min(i1, quietIdx + Math.round(rampLen)) : quietIdx;
-
   const out = getCtx().createBuffer(buf.numberOfChannels, buf.length, sr);
   const chans = [], outs = [];
   for (let c = 0; c < buf.numberOfChannels; c++) {
@@ -2120,73 +2194,79 @@ async function autoFade(direction) {
     outs[c].set(chans[c]);
   }
 
-  /* keep the lift from clipping, measured only where the full gain lands */
-  if (gain > 1) {
-    /* where the gain is at full strength (the ramp is only partly boosted) */
-    const a = direction === 'out' ? Math.min(rampTo, i1) : i0;
-    const b = direction === 'out' ? i1 : Math.max(rampFrom, i0);
-    let peak = 0;
-    for (let c = 0; c < chans.length; c++) {
-      const d = chans[c];
-      for (let i = a; i < b; i++) { const v = Math.abs(d[i]); if (v > peak) peak = v; }
-    }
-    if (peak * gain > 0.98) gain = Math.max(1, 0.98 / Math.max(1e-6, peak));
-  }
+  const gainAt = (i) => {
+    const w = Math.min(env.length - 1, Math.max(0, Math.floor(i / winSamples)));
+    return g2[w];
+  };
+  /* Interpolate between window CENTRES. Interpolating from a window's start
+     made a gain step reach back into the previous window, i.e. boost audio that
+     was still loud. */
+  const easeWin = (i) => {
+    const pos = i / winSamples - 0.5;
+    const w = Math.floor(pos), u = pos - w;
+    const lo = Math.min(env.length - 1, Math.max(0, w));
+    const hi = Math.min(env.length - 1, Math.max(0, w + 1));
+    return g2[lo] + (g2[hi] - g2[lo]) * u;
+  };
 
-  const smooth = (t) => t * t * (3 - 2 * t);
-  const fadeShape = (t) => 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, t)));
-  const fadeAfter = !!(autoFadeToSilence && autoFadeToSilence.checked);
-  const tailFade = fadeAfter ? Math.min(0.6 * sr, Math.abs(direction === 'out' ? i1 - quietIdx : quietIdx - i0) || 0.6 * sr) : 0;
-
-  busy.prog(0.5, 'lifting the level…');
+  busy.prog(0.5, 'un-fading…');
   await nextFrame();
 
-  if (direction === 'out') {
-    const fadeFrom = fadeAfter ? Math.max(rampTo, i1 - Math.round(tailFade)) : i1;
+  /* Where the compensation applies: everything from the knee to the end of the
+     selection (tail), or from the start to the knee (head). */
+  const kneeSample = Math.max(0, Math.min(buf.length, Math.round(kneeW * winSamples)));
+  const rs = direction === 'out' ? Math.max(i0, kneeSample) : i0;
+  const re = direction === 'out' ? i1 : Math.min(i1, kneeSample);
+
+  /* Never let the correction push a sample over full scale: the window envelope
+     can leak a little across a hard level step, so clamp per sample. Inactive
+     almost everywhere (the lifted stretch is quiet by definition). */
+  const safeGain = (src, i) => Math.min(easeWin(i), 0.985 / Math.max(1e-6, Math.abs(src[i])));
+  for (let c = 0; c < chans.length; c++) {
+    const src = chans[c], dst = outs[c];
+    for (let i = rs; i < re; i++) dst[i] = src[i] * safeGain(src, i);
+  }
+
+  /* optional: put a real fade back on the (now levelled) stretch */
+  if (wantFade && re > rs) {
+    const fl = Math.min(Math.round(0.6 * sr), Math.max(1, re - rs));
     for (let c = 0; c < chans.length; c++) {
       const src = chans[c], dst = outs[c];
-      for (let i = rampFrom; i < rampTo; i++) {               // 1x -> gain, inside the quiet bit
-        const u = (i - rampFrom) / Math.max(1, rampTo - rampFrom);
-        dst[i] = src[i] * (1 + (gain - 1) * smooth(u));
-      }
-      for (let i = rampTo; i < fadeFrom; i++) dst[i] = src[i] * gain;   // hold at the average
-      if (fadeAfter) {
-        for (let i = fadeFrom; i < i1; i++) {
-          const u = (i - fadeFrom) / Math.max(1, i1 - fadeFrom);
-          dst[i] = src[i] * gain * (1 - fadeShape(u));
-        }
+      for (let n = 0; n < fl; n++) {
+        const i = direction === 'out' ? (re - fl + n) : (rs + n);
+        // out: gain 1 -> 0 across the last `fl` samples · in: 0 -> 1 across the first
+        const prog = direction === 'out' ? 1 - (n / fl) : (n / fl);
+        const shape = 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, prog)));
+        dst[i] = src[i] * safeGain(src, i) * shape;
       }
     }
-  } else {
-    const fadeTo = fadeAfter ? Math.min(rampFrom, i0 + Math.round(tailFade)) : i0;
+  }
+
+  /* keep it from clipping: scale the correction down, never the source */
+  let peak = 0;
+  for (let c = 0; c < chans.length; c++) {
+    const d = outs[c];
+    for (let i = rs; i < re; i++) { const v = Math.abs(d[i]); if (v > peak) peak = v; }
+  }
+  let clipNote = '';
+  if (peak > 0.99) {
+    const k = 0.99 / peak;
     for (let c = 0; c < chans.length; c++) {
       const src = chans[c], dst = outs[c];
-      if (fadeAfter) {
-        for (let i = i0; i < fadeTo; i++) {
-          const u = (i - i0) / Math.max(1, fadeTo - i0);
-          dst[i] = src[i] * gain * fadeShape(u);
-        }
-      }
-      for (let i = Math.max(fadeTo, i0); i < rampFrom; i++) dst[i] = src[i] * gain;
-      for (let i = rampFrom; i < rampTo; i++) {               // gain -> 1x as the music comes in
-        const u = (i - rampFrom) / Math.max(1, rampTo - rampFrom);
-        dst[i] = src[i] * (gain - (gain - 1) * smooth(u));
-      }
+      for (let i = rs; i < re; i++) dst[i] = src[i] * safeGain(src, i) * k;
     }
+    clipNote = ' · trimmed ' + (20 * Math.log10(k)).toFixed(1) + ' dB to stay under 0 dBFS';
   }
 
   pushUndo();
   state.audioBuffer = out;
   await refreshWaveform({ preserveCurve: true });
   busy.hide();
-  const db = Math.abs(gain - 1) < 0.02 ? 'no lift needed' : '+' + (20 * Math.log10(gain)).toFixed(1) + ' dB lift';
-  const was = (20 * Math.log10(Math.max(1e-6, quietLevel / target))).toFixed(1);
-  toast(hasQuiet
-    ? 'un-faded the ' + (direction === 'out' ? 'tail' : 'head') + ' · ' + db + ' from ' + quietSec.toFixed(2) + ' s · it was ' + was + ' dB under the track average' + (fadeAfter ? ' · then faded' : '')
-    : 'no fade detected — reach for the manual fade controls', hasQuiet ? 'ok' : 'err');
+  const capped = Array.prototype.some.call(gains, (g, i) => i >= region[0] && i < region[1] && g >= MAX_GAIN - 1e-6);
+  toast('un-faded the ' + (direction === 'out' ? 'tail' : 'head') + ' · fade starts at ' + kneeSec.toFixed(2) + ' s, ' + dropDb.toFixed(1) + ' dB deep · lifted to the track average'
+    + (capped ? ' (deepest part capped at +24 dB)' : '') + clipNote + (wantFade ? ' · then faded' : ''), 'ok');
 }
 
-const autoFadeToSilence = $('#autoFadeToSilence');
 $('#btnAutoFadeOut')?.addEventListener('click', () => autoFade('out'));
 $('#btnAutoFadeIn')?.addEventListener('click', () => autoFade('in'));
 
@@ -3859,7 +3939,7 @@ if (state.audioBuffer) { drawFadeOverlay(); }
 requestAnimationFrame(() => { sizeCurveCanvas(); drawCurve(); updateCurveStats(); updatePending(); });
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fc4c313ef8c263',t:'MTc5Mjg3OTY4MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fc73a7ad1cc263',t:'MTc5Mjg4MTI5Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 
 </html>
