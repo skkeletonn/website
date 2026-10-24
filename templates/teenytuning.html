@@ -454,6 +454,12 @@ input[type=number]:focus, input[type=text]:focus { border-color: var(--mint); bo
 .btn-ghost:hover { color: var(--text); background: var(--surface-2); }
 .btn-danger { color: var(--danger); border-color: rgba(239,68,68,.25); }
 .btn-danger:hover { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.45); }
+.auto-fade-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  margin-top: 16px; padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--mint-a35); background: var(--mint-a08);
+}
+.auto-fade-row .label small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 4px; max-width: 46ch; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 18px; }
 
 .segmented { display: inline-flex; padding: 4px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border); gap: 2px; }
@@ -808,6 +814,19 @@ footer {
             <div></div>
           </div>
         </div>
+        <div class="auto-fade-row">
+          <div>
+            <div class="label" style="border:none;padding:0;">Auto un-fade<small>measures the track's own average level and progressively <b>lifts</b> a fading tail (or head) back up to it — no fade to silence</small></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-primary" id="btnAutoFadeOut">Un-fade tail</button>
+            <button class="btn" id="btnAutoFadeIn">Un-fade head</button>
+            <label class="tint-toggle" style="margin:0;gap:7px;">
+              <input type="checkbox" id="autoFadeToSilence"/>
+              <span>then fade to silence</span>
+            </label>
+          </div>
+        </div>
         <div class="btn-row">
           <button class="btn btn-primary" id="btnApplyFade">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1145,6 +1164,8 @@ document.addEventListener('drop', (e) => {
 });
 fileInput.addEventListener('change', (e) => {
   const f = e.target.files?.[0];
+  // reset so picking the same file again still fires 'change'
+  e.target.value = '';
   if (f) handleFile(f);
 });
 window.addEventListener('paste', (e) => {
@@ -1502,44 +1523,46 @@ function getCss(varName) {
   if (state.ws) state.ws.setVolume(state.volume);
 });
 
-let curvePreviewPaused = false;
+/* Background tabs throttle requestAnimationFrame to nothing, which used to leave
+   the curve preview stuck on whatever rate it last applied. rAF is only the
+   smooth path: while the tab is hidden a plain timer keeps driving the rate from
+   the element's own clock, so playback continues *and* keeps following the curve
+   (steps get coarser, but it never desyncs or freezes). No pausing. */
+let curveBgTimer = null;
 
-/* rAF is throttled to nothing in a background tab, so while the curve preview is
-   running the rate just stops updating and the song keeps playing at whatever
-   value it was on. Freeze it properly instead of pretending nothing happened. */
+function curveTickFromClock() {
+  if (!state.ws || !state.audioBuffer) return;
+  if (!state.ws.isPlaying()) return;
+  const onCurveTab = document.querySelector('.tab.active')?.dataset?.tab === 'curve';
+  if (!onCurveTab || isCurveFlat()) return;
+
+  const ct = state.ws.getCurrentTime();
+  const rs = state.region.start, re = state.region.end;
+  if (ct >= re - 0.005) {
+    if (state.loop && re - rs > 0.05) state.ws.setTime(rs);
+    else { state.ws.pause(); state.ws.setTime(rs); return; }
+  }
+  const tNorm = Math.max(0, Math.min(1, (ct - rs) / Math.max(0.001, re - rs)));
+  const speed = evalCurveAt(curvePoints.slice().sort((a, b) => a.t - b.t), tNorm);
+  state.ws.setPlaybackRate(Math.max(SPEED_MIN, Math.min(SPEED_MAX, speed)), state.livePreview.pitchLock);
+}
+
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
-    if (state.ws) {
-      const onCurveTab = document.querySelector('.tab.active')?.dataset?.tab === 'curve';
-      if (onCurveTab && !isCurveFlat() && state.ws.isPlaying()) {
-        curvePreviewPaused = true;
-        state.ws.pause();
-      }
-      // never leave a stale curve rate behind
-      state.ws.setPlaybackRate(state.livePreview.speed || 1, state.livePreview.pitchLock);
+    if (!curveBgTimer) {
+      curveBgTimer = setInterval(curveTickFromClock, 200);
+      curveTickFromClock();
     }
     return;
   }
 
+  if (curveBgTimer) { clearInterval(curveBgTimer); curveBgTimer = null; }
   if (state.audioCtx && state.audioCtx.state === 'suspended') state.audioCtx.resume();
 
   if (state.ws && state.audioBuffer) {
     const activeTab = document.querySelector('.tab.active')?.dataset?.tab;
-    const playing = state.ws.isPlaying() && !curvePreviewPaused;
-    if (activeTab === 'curve' && playing && !isCurveFlat()) {
-      const ct = state.ws.getCurrentTime();
-      const rs = state.region.start, re = state.region.end;
-      const tNorm = Math.max(0, Math.min(1, (ct - rs) / Math.max(0.001, re - rs)));
-      const speed = evalCurveAt(curvePoints.slice().sort((a, b) => a.t - b.t), tNorm);
-      state.ws.setPlaybackRate(Math.max(0.25, Math.min(4, speed)), state.livePreview.pitchLock);
-    } else {
-      state.ws.setPlaybackRate(state.livePreview.speed || 1, state.livePreview.pitchLock);
-    }
-  }
-
-  if (curvePreviewPaused) {
-    curvePreviewPaused = false;
-    toast('curve preview paused — the tab was in the background, hit play to continue', 'err');
+    if (activeTab === 'curve' && state.ws.isPlaying() && !isCurveFlat()) curveTickFromClock();
+    else state.ws.setPlaybackRate(state.livePreview.speed || 1, state.livePreview.pitchLock);
   }
 });
 
@@ -1992,6 +2015,180 @@ $('#btnApplyBoost')?.addEventListener('click', async () => {
   }
   busy.hide();
 });
+
+/* ---- automatic fades -------------------------------------------------
+   No guessing at a duration: measure the track, find where it goes quiet, pull
+   that quiet stretch up to the track's own average level, then fade it out (or
+   mirrored for the head). The fade length and the amount of lift both come from
+   the audio itself. */
+
+function medianOf(arr) {
+  if (!arr.length) return 0;
+  const a = Array.prototype.slice.call(arr).sort((x, y) => x - y);
+  const m = a.length >> 1;
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+/* RMS per window (default 50 ms), stereo-aware. */
+function rmsEnvelope(buf, winSec = 0.05) {
+  const sr = buf.sampleRate;
+  const win = Math.max(1, Math.round(winSec * sr));
+  const n = Math.ceil(buf.length / win);
+  const env = new Float32Array(n);
+  const chans = [];
+  for (let c = 0; c < Math.min(2, buf.numberOfChannels); c++) chans.push(buf.getChannelData(c));
+  for (let w = 0; w < n; w++) {
+    const a = w * win, b = Math.min(buf.length, a + win);
+    let sum = 0;
+    for (let c = 0; c < chans.length; c++) {
+      const d = chans[c];
+      for (let i = a; i < b; i++) sum += d[i] * d[i];
+    }
+    env[w] = Math.sqrt(sum / Math.max(1, (b - a) * chans.length));
+  }
+  return { env, win };
+}
+
+function levelBetween(env, from, to) {
+  let sum = 0, n = 0;
+  for (let i = Math.max(0, from); i < Math.min(env.length, to); i++) { sum += env[i] * env[i]; n++; }
+  return n ? Math.sqrt(sum / n) : 0;
+}
+
+async function autoFade(direction) {
+  if (!state.audioBuffer) return;
+  const buf = state.audioBuffer, sr = buf.sampleRate;
+  const { start, end } = state.region;
+  const selDur = Math.max(0.3, end - start);
+
+  busy.show('measuring levels…');
+  await new Promise(r => setTimeout(r, 20));
+
+  const { env, win } = rmsEnvelope(buf, 0.05);
+  const idxOf = (sec) => Math.max(0, Math.min(env.length, Math.round((sec * sr) / win)));
+  const w0 = idxOf(start), w1 = idxOf(end);
+  const span = Math.max(1, w1 - w0);
+
+  /* Reference = the *loud* parts of the selection: 70th percentile of the middle,
+     so a long quiet stretch can't drag the average down with it. */
+  const midFrom = w0 + Math.floor(span * 0.1);
+  const midTo = Math.max(midFrom + 1, w0 + Math.floor(span * 0.9));
+  const mid = [];
+  for (let w = midFrom; w < midTo; w++) if (env[w] > 1e-5) mid.push(env[w]);
+  mid.sort((a, b) => a - b);
+  const target = Math.max(1e-4, mid.length ? mid[Math.min(mid.length - 1, Math.floor(mid.length * 0.7))] : levelBetween(env, w0, w1));
+  const quiet = target * 0.6;
+
+  /* Where does it go quiet, and how quiet is that bit? */
+  let quietSec, quietLevel, quietLen;
+  if (direction === 'out') {
+    let lastLoud = w0;
+    for (let w = w1 - 1; w >= w0; w--) { if (env[w] >= quiet) { lastLoud = w; break; } }
+    quietSec = start + ((lastLoud - w0) * win) / sr;   /* win is in samples */
+    quietLen = Math.max(0, end - quietSec);
+    quietLevel = levelBetween(env, lastLoud + 1, w1) || levelBetween(env, lastLoud, w1) || target;
+  } else {
+    let firstLoud = w1;
+    for (let w = w0; w < w1; w++) { if (env[w] >= quiet) { firstLoud = w; break; } }
+    quietSec = start + ((firstLoud - w0) * win) / sr;
+    quietLen = Math.max(0, quietSec - start);
+    quietLevel = levelBetween(env, w0, firstLoud - 1) || levelBetween(env, w0, firstLoud) || target;
+  }
+
+  /* The lift is anchored on the quiet point itself: ramp in over a short
+     pre-roll, then hold the level at the average for the rest of the quiet
+     stretch. That is the "anti-unfade" — no fade back to silence. */
+  const i0 = Math.max(0, Math.floor(start * sr));
+  const i1 = Math.min(buf.length, Math.floor(end * sr));
+  const quietIdx = Math.max(i0, Math.min(i1, Math.round(quietSec * sr)));
+  const hasQuiet = quietLen >= 0.15;
+
+  let gain = hasQuiet ? Math.max(1, Math.min(6, target / Math.max(1e-4, quietLevel))) : 1;
+
+  /* The ramp lives *inside* the quiet stretch, so the parts that weren't fading
+     are never boosted. */
+  const quietSpan = direction === 'out' ? (i1 - quietIdx) : (quietIdx - i0);
+  const rampLen = Math.max(0.12 * sr, Math.min(0.45 * sr, quietSpan * 0.4));
+  const rampFrom = direction === 'out' ? quietIdx : Math.max(i0, quietIdx - Math.round(rampLen));
+  const rampTo = direction === 'out' ? Math.min(i1, quietIdx + Math.round(rampLen)) : quietIdx;
+
+  const out = getCtx().createBuffer(buf.numberOfChannels, buf.length, sr);
+  const chans = [], outs = [];
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    chans.push(buf.getChannelData(c));
+    outs.push(out.getChannelData(c));
+    outs[c].set(chans[c]);
+  }
+
+  /* keep the lift from clipping, measured only where the full gain lands */
+  if (gain > 1) {
+    /* where the gain is at full strength (the ramp is only partly boosted) */
+    const a = direction === 'out' ? Math.min(rampTo, i1) : i0;
+    const b = direction === 'out' ? i1 : Math.max(rampFrom, i0);
+    let peak = 0;
+    for (let c = 0; c < chans.length; c++) {
+      const d = chans[c];
+      for (let i = a; i < b; i++) { const v = Math.abs(d[i]); if (v > peak) peak = v; }
+    }
+    if (peak * gain > 0.98) gain = Math.max(1, 0.98 / Math.max(1e-6, peak));
+  }
+
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const fadeShape = (t) => 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, t)));
+  const fadeAfter = !!(autoFadeToSilence && autoFadeToSilence.checked);
+  const tailFade = fadeAfter ? Math.min(0.6 * sr, Math.abs(direction === 'out' ? i1 - quietIdx : quietIdx - i0) || 0.6 * sr) : 0;
+
+  busy.prog(0.5, 'lifting the level…');
+  await nextFrame();
+
+  if (direction === 'out') {
+    const fadeFrom = fadeAfter ? Math.max(rampTo, i1 - Math.round(tailFade)) : i1;
+    for (let c = 0; c < chans.length; c++) {
+      const src = chans[c], dst = outs[c];
+      for (let i = rampFrom; i < rampTo; i++) {               // 1x -> gain, inside the quiet bit
+        const u = (i - rampFrom) / Math.max(1, rampTo - rampFrom);
+        dst[i] = src[i] * (1 + (gain - 1) * smooth(u));
+      }
+      for (let i = rampTo; i < fadeFrom; i++) dst[i] = src[i] * gain;   // hold at the average
+      if (fadeAfter) {
+        for (let i = fadeFrom; i < i1; i++) {
+          const u = (i - fadeFrom) / Math.max(1, i1 - fadeFrom);
+          dst[i] = src[i] * gain * (1 - fadeShape(u));
+        }
+      }
+    }
+  } else {
+    const fadeTo = fadeAfter ? Math.min(rampFrom, i0 + Math.round(tailFade)) : i0;
+    for (let c = 0; c < chans.length; c++) {
+      const src = chans[c], dst = outs[c];
+      if (fadeAfter) {
+        for (let i = i0; i < fadeTo; i++) {
+          const u = (i - i0) / Math.max(1, fadeTo - i0);
+          dst[i] = src[i] * gain * fadeShape(u);
+        }
+      }
+      for (let i = Math.max(fadeTo, i0); i < rampFrom; i++) dst[i] = src[i] * gain;
+      for (let i = rampFrom; i < rampTo; i++) {               // gain -> 1x as the music comes in
+        const u = (i - rampFrom) / Math.max(1, rampTo - rampFrom);
+        dst[i] = src[i] * (gain - (gain - 1) * smooth(u));
+      }
+    }
+  }
+
+  pushUndo();
+  state.audioBuffer = out;
+  await refreshWaveform({ preserveCurve: true });
+  busy.hide();
+  const db = Math.abs(gain - 1) < 0.02 ? 'no lift needed' : '+' + (20 * Math.log10(gain)).toFixed(1) + ' dB lift';
+  const was = (20 * Math.log10(Math.max(1e-6, quietLevel / target))).toFixed(1);
+  toast(hasQuiet
+    ? 'un-faded the ' + (direction === 'out' ? 'tail' : 'head') + ' · ' + db + ' from ' + quietSec.toFixed(2) + ' s · it was ' + was + ' dB under the track average' + (fadeAfter ? ' · then faded' : '')
+    : 'no fade detected — reach for the manual fade controls', hasQuiet ? 'ok' : 'err');
+}
+
+const autoFadeToSilence = $('#autoFadeToSilence');
+$('#btnAutoFadeOut')?.addEventListener('click', () => autoFade('out'));
+$('#btnAutoFadeIn')?.addEventListener('click', () => autoFade('in'));
 
 function hannWindow(n) {
   const w = new Float32Array(n);
@@ -3662,7 +3859,7 @@ if (state.audioBuffer) { drawFadeOverlay(); }
 requestAnimationFrame(() => { sizeCurveCanvas(); drawCurve(); updateCurveStats(); updatePending(); });
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fc36dfdbf7c263',t:'MTc5Mjg3ODgwNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fc4c313ef8c263',t:'MTc5Mjg3OTY4MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 
 </html>
