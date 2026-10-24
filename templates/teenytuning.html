@@ -29,6 +29,18 @@
   --mint-deep: #2e7d32;
   --mint-glow: rgba(76, 175, 80, 0.35);
 
+  /* every translucent accent is derived, so tinting --mint moves all of them */
+  --mint-a08: color-mix(in srgb, var(--mint) 8%, transparent);
+  --mint-a10: color-mix(in srgb, var(--mint) 10%, transparent);
+  --mint-a12: color-mix(in srgb, var(--mint) 12%, transparent);
+  --mint-a15: color-mix(in srgb, var(--mint) 15%, transparent);
+  --mint-a22: color-mix(in srgb, var(--mint) 22%, transparent);
+  --mint-a35: color-mix(in srgb, var(--mint) 35%, transparent);
+
+  /* HUD layer */
+  --hud-line: rgba(255, 255, 255, 0.055);
+  --hud-grid: rgba(255, 255, 255, 0.035);
+
   --herb: #6b4226;
   --herb-2: #8d6e63;
   --herb-light: #d7ccc8;
@@ -121,7 +133,104 @@ footer { animation: fade-up 0.8s cubic-bezier(.2,.7,.2,1) both; animation-delay:
   padding: 2px 4px; border-radius: 4px;
 }
 .brand:hover .txt { background-position: 0% 100%; }
-.brand .b-sub { font-family: var(--mono); font-weight: 600; font-size: 11px; color: var(--mint-3); padding: 3px 8px; border-radius: 6px; background: rgba(76,175,80,.15); letter-spacing: .08em; }
+.brand .b-sub { font-family: var(--mono); font-weight: 600; font-size: 11px; color: var(--mint-3); padding: 3px 8px; border-radius: 6px; background: var(--mint-a15); letter-spacing: .08em; }
+
+/* ============ HUD layer (CS:GO-ish) =====================================
+   An inert pattern sitting over the editor card: 45° pinstripes, a fine grid,
+   accent corner brackets and a top hairline. pointer-events: none everywhere
+   so it can never eat a click, and it is masked to fade out down the card. */
+#editorCard { position: relative; }
+
+.hud-on #editorCard::before,
+.hud-on #editorCard::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border-radius: inherit;
+}
+/* sits *above* the panels — underneath, their own backgrounds hide it */
+.hud-on #editorCard::before { z-index: 3; }
+.hud-on #editorCard::after  { z-index: 4; }
+
+/* pinstripes + grid */
+.hud-on #editorCard::before {
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(45deg, var(--hud-line) 0 1px, transparent 1px 14px),
+    repeating-linear-gradient(-45deg, var(--hud-line) 0 1px, transparent 1px 14px),
+    linear-gradient(var(--hud-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hud-grid) 1px, transparent 1px);
+  background-size: auto, auto, 44px 44px, 44px 44px;
+  opacity: .5;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.55) 55%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.55) 55%, transparent 100%);
+  opacity: .55;
+}
+
+/* corner brackets, drawn with 8 gradient bars */
+.hud-on #editorCard::after {
+  inset: 10px;
+  --c: var(--mint-3);
+  --l: 18px;
+  --t: 2px;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(var(--c), var(--c)), linear-gradient(var(--c), var(--c)),
+    linear-gradient(var(--c), var(--c)), linear-gradient(var(--c), var(--c)),
+    linear-gradient(var(--c), var(--c)), linear-gradient(var(--c), var(--c)),
+    linear-gradient(var(--c), var(--c)), linear-gradient(var(--c), var(--c));
+  background-size: var(--l) var(--t), var(--t) var(--l), var(--l) var(--t), var(--t) var(--l),
+                   var(--l) var(--t), var(--t) var(--l), var(--l) var(--t), var(--t) var(--l);
+  background-position: left top, left top, right top, right top,
+                       left bottom, left bottom, right bottom, right bottom;
+  opacity: .85;
+}
+
+/* accent hairline along the top edge of the card */
+.hud-on #editorCard > .loaded-bar { border-top: 1px solid var(--mint-a35); }
+
+/* chamfered, angular export tiles + tab strip read as HUD panels */
+.hud-on .export-tile {
+  border-radius: 0;
+  clip-path: polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+.hud-on .export-tile:hover { clip-path: polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%); }
+.hud-on .tabs { border-radius: 0; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+
+/* readout strip — only exists while the HUD is on */
+.hud-strip { display: none; }
+.hud-on .hud-strip {
+  display: flex; align-items: center; gap: 20px;
+  padding: 9px 22px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  background: linear-gradient(90deg, var(--mint-a08), transparent 60%);
+  white-space: nowrap; overflow: hidden;
+}
+.hud-strip .hs-item { display: inline-flex; align-items: baseline; gap: 7px; min-width: 0; }
+.hud-strip .hs-item i { color: var(--muted-2); font-style: normal; }
+.hud-strip .hs-item b { color: var(--mint-3); font-weight: 700; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+.hud-strip .hs-item b.ok { color: var(--mint-3); }
+.hud-strip .hs-item b.warn { color: var(--warn); }
+.hud-strip .hs-spacer { flex: 1 1 auto; }
+.hud-strip .hs-tick {
+  width: 46px; height: 3px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--mint), transparent);
+  opacity: .8;
+}
+
+/* nav gets a matching hairline + HUD button */
+.hud-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: .10em; text-transform: uppercase;
+  color: var(--muted); background: transparent; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.hud-btn:hover { color: var(--mint-3); border-color: var(--mint-3); background: var(--mint-a08); }
+.hud-btn.is-on { color: var(--mint-3); border-color: var(--mint-a35); background: var(--mint-a10); }
+.hud-btn .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .45; }
+.hud-btn.is-on .dot { opacity: 1; box-shadow: 0 0 8px var(--mint-glow); }
 
 .nav-right { display: flex; align-items: center; gap: 14px; }
 .nav-link { color: var(--muted); font-weight: 600; font-size: 14px; padding: 8px 12px; border-radius: 10px; transition: color .15s, text-shadow .15s; }
@@ -172,7 +281,7 @@ main { max-width: 1180px; margin: 0 auto 40px; padding: 0 clamp(20px, 4vw, 48px)
   text-align: center;
   transition: border-color .2s, background .2s, transform .2s;
 }
-.drop.is-drag { border-color: var(--mint); background: rgba(76,175,80,.08); transform: scale(1.005); }
+.drop.is-drag { border-color: var(--mint); background: var(--mint-a08); transform: scale(1.005); }
 .drop h3 { font-size: 22px; }
 .drop p { color: var(--muted); max-width: 520px; }
 .drop-icon {
@@ -214,10 +323,10 @@ main { max-width: 1180px; margin: 0 auto 40px; padding: 0 clamp(20px, 4vw, 48px)
   position: relative;
 }
 #waveform { width: 100%; min-height: 132px; position: relative; z-index: 1; }
-#waveform .wavesurfer-region { background: rgba(76,175,80,.18) !important; }
+#waveform .wavesurfer-region { background: var(--wave-region, var(--mint-a15)) !important; }
 .fade-overlay { position: absolute; left: 22px; right: 22px; top: 18px; bottom: 18px; pointer-events: none; width: calc(100% - 44px); height: calc(100% - 36px); display: block; z-index: 10; }
 .fade-overlay polygon.wedge-fade  { fill: rgba(239, 68, 68, 0.28); }
-.fade-overlay polygon.wedge-boost { fill: rgba(76, 175, 80, 0.22); }
+.fade-overlay polygon.wedge-boost { fill: var(--mint-a22); }
 .playhead-grab { cursor: grab; }
 .playhead-grab.dragging { cursor: grabbing; }
 
@@ -252,8 +361,8 @@ main { max-width: 1180px; margin: 0 auto 40px; padding: 0 clamp(20px, 4vw, 48px)
 .btn-loop svg { width: 18px; height: 18px; }
 .btn-loop:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface-2); }
 .btn-loop:active { transform: scale(.94); }
-.btn-loop.is-on { color: var(--mint-3); border-color: var(--mint-3); background: rgba(76,175,80,.10); }
-.btn-loop.is-on:hover { background: rgba(76,175,80,.15); }
+.btn-loop.is-on { color: var(--mint-3); border-color: var(--mint-3); background: var(--mint-a10); }
+.btn-loop.is-on:hover { background: var(--mint-a15); }
 .time { font-family: var(--mono); font-size: 14px; color: var(--text); }
 .time .sep { color: var(--muted-2); margin: 0 4px; }
 .time .total { color: var(--muted); }
@@ -384,7 +493,7 @@ input[type=number]:focus, input[type=text]:focus { border-color: var(--mint); bo
 .pending-bar .pk { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .chip {
   font-family: var(--mono); font-size: 11px; padding: 4px 9px; border-radius: 999px;
-  background: rgba(76,175,80,.12); border: 1px solid rgba(76,175,80,.35); color: var(--mint-3);
+  background: var(--mint-a12); border: 1px solid var(--mint-a35); color: var(--mint-3);
 }
 .chip.warn { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.35); color: var(--warn); }
 .point-edit { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
@@ -485,6 +594,9 @@ footer {
     <a class="nav-link" href="/projects">Projects</a>
     <a class="nav-link" href="/converter">PIXL</a>
     <a class="nav-link" href="https://discord.com/invite/WDbJ5wE2cR" target="_blank" rel="noopener">Discord</a>
+    <button class="hud-btn" id="hudToggle" aria-pressed="true" title="Toggle the HUD overlay pattern">
+      <span class="dot"></span><span>HUD</span>
+    </button>
   </div>
 </nav>
 
@@ -579,6 +691,17 @@ footer {
         <div class="switch" id="pitchLockSwitch" role="switch" aria-checked="false"></div>
         <span class="mono" id="pitchLockLabel" style="color: var(--muted);">off</span>
       </div>
+    </div>
+
+    <div class="hud-strip" id="hudStrip">
+      <span class="hs-item"><i>file</i><b id="hsFile">—</b></span>
+      <span class="hs-item"><i>fmt</i><b id="hsFmt">—</b></span>
+      <span class="hs-item"><i>len</i><b id="hsLen">—</b></span>
+      <span class="hs-item"><i>rate</i><b id="hsRate">—</b></span>
+      <span class="hs-item"><i>ch</i><b id="hsCh">—</b></span>
+      <span class="hs-item"><i>status</i><b id="hsStatus" class="ok">ready</b></span>
+      <span class="hs-spacer"></span>
+      <span class="hs-tick"></span>
     </div>
 
     <div class="card-body">
@@ -912,6 +1035,26 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
 
+
+/* HUD overlay toggle — on by default, remembered. */
+const HUD_KEY = 'teenytuning-hud';
+(function initHud() {
+  let want = true;
+  try { want = localStorage.getItem(HUD_KEY) !== 'off'; } catch (_) {}
+  document.documentElement.classList.toggle('hud-on', want);
+  const btn = $('#hudToggle');
+  if (!btn) return;
+  btn.classList.toggle('is-on', want);
+  btn.setAttribute('aria-pressed', want ? 'true' : 'false');
+  btn.addEventListener('click', () => {
+    const on = !document.documentElement.classList.contains('hud-on');
+    document.documentElement.classList.toggle('hud-on', on);
+    btn.classList.toggle('is-on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    try { localStorage.setItem(HUD_KEY, on ? 'on' : 'off'); } catch (_) {}
+  });
+})();
+
 const toast = (msg, kind = '') => {
   const t = $('#toast');
   t.textContent = msg;
@@ -919,10 +1062,19 @@ const toast = (msg, kind = '') => {
   clearTimeout(toast._t);
   toast._t = setTimeout(() => t.classList.remove('show'), 2400);
 };
+function setHudStatus(text, kind) {
+  const el = $('#hsStatus');
+  if (!el) return;
+  el.textContent = (text || '').toLowerCase();
+  el.className = kind || 'ok';
+}
 const busy = {
-  show(msg = 'working…') { $('#busy').classList.add('show'); $('#busyMsg').textContent = msg; $('#busyBar').style.width = '0%'; },
+  show(msg = 'working…') {
+    $('#busy').classList.add('show'); $('#busyMsg').textContent = msg; $('#busyBar').style.width = '0%';
+    setHudStatus('working', 'warn');
+  },
   prog(p, msg) { $('#busyBar').style.width = (p * 100).toFixed(1) + '%'; if (msg) $('#busyMsg').textContent = msg; },
-  hide() { $('#busy').classList.remove('show'); }
+  hide() { $('#busy').classList.remove('show'); setHudStatus('ready', 'ok'); }
 };
 
 const fmtTime = (s, prec = 2) => {
@@ -1094,6 +1246,11 @@ function renderLoadedFile(file, buf) {
   $('#fileDur').textContent = fmtTime(buf.duration, 2);
   $('#fileChans').textContent = buf.numberOfChannels === 1 ? 'mono' : (buf.numberOfChannels === 2 ? 'stereo' : buf.numberOfChannels + 'ch');
   $('#fileRate').textContent = (buf.sampleRate / 1000).toFixed(1) + ' kHz';
+  if ($('#hsFile')) $('#hsFile').textContent = file.name.replace(/\.[^.]+$/, '').slice(0, 22);
+  if ($('#hsFmt')) $('#hsFmt').textContent = ((file.name.split('.').pop() || '').toUpperCase() || '?') + (file.type.startsWith('video/') ? ' → audio' : '');
+  if ($('#hsLen')) $('#hsLen').textContent = fmtTime(buf.duration, 2);
+  if ($('#hsRate')) $('#hsRate').textContent = (buf.sampleRate / 1000).toFixed(1) + ' kHz';
+  if ($('#hsCh')) $('#hsCh').textContent = buf.numberOfChannels === 1 ? 'mono' : (buf.numberOfChannels === 2 ? 'stereo' : buf.numberOfChannels + 'ch');
   $('#tDur').textContent = fmtTime(buf.duration, 2);
   $('#speedOrigDur').textContent = fmtTime(buf.duration, 2);
   $('#speedNewDur').textContent = fmtTime(buf.duration, 2);
@@ -1477,6 +1634,7 @@ async function refreshWaveform(opts = {}) {
   $('#speedOrigDur').textContent = fmtTime(buf.duration, 2);
   $('#speedNewDur').textContent = fmtTime(buf.duration / parseFloat($('#speedRange').value), 2);
   state.region = { start: 0, end: buf.duration };
+  if ($('#hsLen')) $('#hsLen').textContent = fmtTime(buf.duration, 2);
   if (!opts.preserveCurve) resetCurveDefault();
   else updateCurveStats();
   await mountWavesurfer(buf);
@@ -2337,6 +2495,10 @@ function concatBuffers(chunks) {
 /* ---------- artwork-driven theme -------------------------------------- */
 
 const THEME_KEYS = ['--mint', '--mint-2', '--mint-3', '--mint-deep', '--mint-glow',
+  // text + neutrals were greenish-grey; they carry the hue too now
+  '--text', '--muted', '--muted-2', '--herb', '--herb-2', '--herb-light',
+  // glows / shadows
+  '--shadow-mint', '--hud-line', '--hud-grid',
   '--bg', '--bg-2', '--body-grad-top', '--body-grad-bot', '--body-glow',
   // the card, panels, transport and nav all sit on these — without them the
   // editor stays default-green inside a tinted page
@@ -2433,6 +2595,20 @@ function applyPalette(hue, sat) {
   st.setProperty('--stage-bg', hsla(H, Ss, 0.035, 0.34));
   st.setProperty('--nav-grad-top', hsla(H, S * 0.30, 0.05, 0.88));
   st.setProperty('--nav-grad-bot', hsla(H, S * 0.30, 0.05, 0.55));
+
+  /* Text and neutrals: near-white / grey, but tinted, so nothing reads as
+     leftover green next to an orange or violet cover. Kept high-contrast. */
+  st.setProperty('--text', hslToHex(H, 0.18, 0.95));
+  st.setProperty('--muted', hslToHex(H, 0.16, 0.64));
+  st.setProperty('--muted-2', hslToHex(H, 0.13, 0.52));
+  st.setProperty('--herb', hslToHex(H, 0.34, 0.24));
+  st.setProperty('--herb-2', hslToHex(H, 0.30, 0.44));
+  st.setProperty('--herb-light', hslToHex(H, 0.22, 0.82));
+
+  /* glows */
+  st.setProperty('--shadow-mint', '0 10px 40px -10px ' + hsla(H, Math.min(95, S + 5), 0.55, 0.55));
+  st.setProperty('--hud-line', hsla(H, 70, 0.88, 0.075));
+  st.setProperty('--hud-grid', hsla(H, 70, 0.88, 0.05));
 
   /* Waveform: deliberately NOT the accent colour — a bright, barely-tinted
      near-white for the body and a hot accent for the played portion. */
@@ -3026,6 +3202,8 @@ function updatePending() {
     if (state.boost.volDb > 0.01) chips.push('+' + state.boost.volDb.toFixed(1) + ' dB vol');
     if (state.boost.bassDb > 0.01) chips.push('+' + state.boost.bassDb.toFixed(1) + ' dB bass');
   }
+  const hudStatus = $('#hsStatus');
+  if (hudStatus && !$('#busy').classList.contains('show')) setHudStatus(chips.length ? 'pending ' + chips.length : 'ready', chips.length ? 'warn' : 'ok');
   bar.querySelectorAll('.chip').forEach(el => el.remove());
   if (!chips.length) {
     const n = document.createElement('span');
@@ -3448,7 +3626,7 @@ if (state.audioBuffer) { drawFadeOverlay(); }
 requestAnimationFrame(() => { sizeCurveCanvas(); drawCurve(); updateCurveStats(); updatePending(); });
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fc0ee5a88dc263',t:'MTc5Mjg3NzE2OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2f473e34b182259',t:'MTc4NzQyODcxMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4fc2353ebfdc263',t:'MTc5Mjg3ODAwNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
 
 </html>
