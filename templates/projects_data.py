@@ -54,7 +54,7 @@ projects = [
         "id": "teenytuning",
         "title": "TeenyTuning - Audio Editor",
         "category": "webapp",
-        "logo": "https://i.imgur.com/Ud4nmgM.png",
+        "logo": "https://i.imgur.com/1Rh3i51.png",
         "icon": "https://i.imgur.com/VWBy5Sk.png",
         "logo_animation": "pulse",
         "description": "In-browser audio editor — trim, fade, slice, draw speed curves, pitch-shift, swap cover art. Runs entirely client-side.",
