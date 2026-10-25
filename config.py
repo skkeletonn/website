@@ -59,7 +59,7 @@ TEENYTUNING_META_TAGS = make_meta(
     "Free in-browser audio editor. Trim with waveform, fade in/out, change speed with pitch lock, draw speed curves, shift pitch, extract or embed cover art. No signup, no upload limits.",
     "/teenytuning",
     override_title=True,
-    image="https://i.imgur.com/J3TQ64u.png",
+    image="https://i.imgur.com/1Rh3i51.png",
     keywords="audio editor, online audio editor, trim audio, fade audio, change audio speed, pitch shifter, speed curve, audio waveform, extract audio from video, cover art editor, mp3 editor, free audio tool"
 )
 
