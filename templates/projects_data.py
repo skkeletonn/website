@@ -63,7 +63,7 @@ projects = [
         "link_internal": True,
         "status": "live",
         "spotlight": True,
-        "spotlight_image": "https://i.imgur.com/Ud4nmgM.png",
+        "spotlight_image": "https://i.imgur.com/1Rh3i51.png",
         "spotlight_eyebrow": "New tool",
         "spotlight_blurb": "Trim, fade, draw speed curves, shift pitch without chipmunking, swap cover art — no upload limits, no signup.",
     },
