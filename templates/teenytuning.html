@@ -322,7 +322,21 @@ main { max-width: 1180px; margin: 0 auto 40px; padding: 0 clamp(20px, 4vw, 48px)
   padding: 18px 22px;
   position: relative;
 }
-#waveform { width: 100%; min-height: 132px; position: relative; z-index: 1; }
+/* The waveform scales with the volume you are listening at, so the picture
+   matches your ears. The container height follows the same factor and the
+   renderer is flex-centred inside it, so scaling never clips the peaks.
+   (transform-origin is the centre: the bars grow up AND down from the axis.) */
+#waveform {
+  width: 100%; min-height: 44px; height: 132px; position: relative; z-index: 1;
+  display: flex; align-items: center; overflow: hidden;
+  transition: height .18s cubic-bezier(.2, .7, .2, 1);
+}
+#waveform > * {
+  flex: 0 0 auto; width: 100%;
+  transform-origin: 50% 50%;
+  transition: transform .18s cubic-bezier(.2, .7, .2, 1);
+  will-change: transform;
+}
 #waveform .wavesurfer-region { background: var(--wave-region, var(--mint-a15)) !important; }
 .fade-overlay { position: absolute; left: 22px; right: 22px; top: 18px; bottom: 18px; pointer-events: none; width: calc(100% - 44px); height: calc(100% - 36px); display: block; z-index: 10; }
 .fade-overlay polygon.wedge-fade  { fill: rgba(239, 68, 68, 0.28); }
@@ -460,6 +474,18 @@ input[type=number]:focus, input[type=text]:focus { border-color: var(--mint); bo
   border: 1px solid var(--mint-a35); background: var(--mint-a08);
 }
 .auto-fade-row .label small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 4px; max-width: 46ch; }
+/* hold-off / max-lift controls under the un-fade buttons */
+.unfade-opts {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  margin-top: 10px; padding: 10px 14px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted);
+}
+.unfade-opts label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.unfade-opts input[type=number] { max-width: 84px; padding: 6px 10px; font-size: 12px; }
+.unfade-opts .unit { color: var(--muted-2); }
+.unfade-opts .tip { text-transform: none; letter-spacing: 0; font-family: var(--sans); font-size: 11px; color: var(--muted-2); }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 18px; }
 
 .segmented { display: inline-flex; padding: 4px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border); gap: 2px; }
@@ -813,6 +839,16 @@ footer {
             </div>
             <div></div>
           </div>
+          <div class="row">
+            <div class="label">Boost hold-off<small>leave the very first / last N seconds alone before a boost starts</small></div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <span class="mono" style="font-size:11px;color:var(--muted);">START</span>
+              <input type="number" id="boostInSkip" step="0.05" min="0" max="10" value="0.30" style="max-width:100px;" title="seconds held at unity before the start boost eases in"/>
+              <span class="mono" style="font-size:11px;color:var(--muted);">END</span>
+              <input type="number" id="boostOutSkip" step="0.05" min="0" max="10" value="0.30" style="max-width:100px;" title="seconds held at unity before the end boost eases in"/>
+            </div>
+            <div></div>
+          </div>
         </div>
         <div class="auto-fade-row">
           <div>
@@ -825,6 +861,17 @@ footer {
               <input type="checkbox" id="autoFadeToSilence"/>
               <span>then fade to silence</span>
             </label>
+          </div>
+          <div class="unfade-opts" style="flex:1 1 100%;">
+            <label for="unfadeSkip">hold off
+              <input type="number" id="unfadeSkip" step="0.05" min="0" max="10" value="0.50"/>
+              <span class="unit">s</span>
+            </label>
+            <label for="unfadeMaxLift">max lift
+              <input type="number" id="unfadeMaxLift" step="0.5" min="0" max="24" value="12"/>
+              <span class="unit">dB</span>
+            </label>
+            <span class="tip">the correction never touches the outer hold-off, is capped at max lift, and may only ramp up smoothly — it can't pop a single quiet patch up to the average</span>
           </div>
         </div>
         <div class="btn-row">
@@ -938,8 +985,8 @@ footer {
       <div class="panel" data-panel="boost">
         <div class="row-stack">
           <div class="row">
-            <div class="label">Volume<small>flat gain on everything · up to +24 dB</small></div>
-            <input type="range" id="volBoostRange" min="0" max="24" step="0.5" value="0"/>
+            <div class="label">Volume<small>flat gain on everything · −24 → +24 dB (cut or boost)</small></div>
+            <input type="range" id="volBoostRange" min="-24" max="24" step="0.5" value="0"/>
             <div class="value" id="volBoostVal">0.0 dB</div>
           </div>
           <div class="row">
@@ -961,7 +1008,7 @@ footer {
             <div></div>
           </div>
         </div>
-        <p class="muted" style="font-size:12px;margin-top:12px;"><b>Volume</b> is a flat gain — everything gets louder, and it will clip without the limiter. <b>Bass</b> is a low-shelf EQ — only the low end comes up, vocals stay put. Both are audible live and baked into the download.</p>
+        <p class="muted" style="font-size:12px;margin-top:12px;"><b>Volume</b> is a flat gain — push it up and everything gets louder (it will clip without the limiter), pull it below 0 and everything gets quieter. <b>Bass</b> is a low-shelf EQ — only the low end comes up, vocals stay put. Both are audible live and baked into the download.</p>
         <div class="btn-row">
           <button class="btn btn-primary" id="btnApplyBoost">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -1409,12 +1456,12 @@ const PreviewEngine = {
     const now = this.ctx.currentTime;
     const vol = Math.pow(10, (b.volDb || 0) / 20);
     this.boostGain.gain.cancelScheduledValues(now);
-    this.boostGain.gain.setTargetAtTime(b.volDb > 0.01 ? vol : 1, now, 0.02);
+    this.boostGain.gain.setTargetAtTime(Math.abs(b.volDb || 0) > 0.01 ? vol : 1, now, 0.02);
     this.bass.frequency.cancelScheduledValues(now);
     this.bass.frequency.setTargetAtTime(b.bassFreq || 110, now, 0.02);
     this.bass.gain.cancelScheduledValues(now);
     this.bass.gain.setTargetAtTime(b.bassDb > 0.01 ? b.bassDb : 0, now, 0.02);
-    this.setBoostLimiter(b.limiter !== false && (b.volDb > 0.01 || b.bassDb > 0.01));
+    this.setBoostLimiter(b.limiter !== false && boostNeedsLimiter(b));
   },
 
   attach(ws) {
@@ -1472,11 +1519,17 @@ const PreviewEngine = {
 
       const fi = state.livePreview.fadeIn;
       const fo = state.livePreview.fadeOut;
+      const bi = state.livePreview.boostIn;
+      const bo = state.livePreview.boostOut;
+      const rampFn = fadeRampFn(fadeCurve);
+      const skips = boostSkips();
       const dur = state.audioBuffer ? state.audioBuffer.duration : 0;
       let g = 1;
       const rs = state.region.start, re = state.region.end;
       if (fi > 0 && ct - rs < fi) g *= Math.max(0, (ct - rs) / fi);
       if (fo > 0 && re - ct < fo) g *= Math.max(0, (re - ct) / fo);
+      if (bi > 0) g *= boostEdgeGain(ct - rs, bi, skips.in, rampFn, 'in');
+      if (bo > 0) g *= boostEdgeGain(re - ct, bo, skips.out, rampFn, 'out');
       this.setGain(g, false);
 
       const activeTab = document.querySelector('.tab.active')?.dataset?.tab;
@@ -1518,9 +1571,37 @@ function getCss(varName) {
   $('#btnLoop').classList.toggle('is-on', state.loop);
 });
 
+/* ---- waveform follows the volume -------------------------------------
+   The picture should agree with your ears: turn the preview down and the
+   waveform shrinks, turn the Loudness "Volume" up (or down) and it grows or
+   shrinks with it. Only the display is scaled — the audio is untouched. */
+const WAVE_BASE_H = 132;
+function applyWaveScale() {
+  const host = $('#waveform');
+  if (!host) return;
+  if (!state.audioBuffer) { host.style.height = WAVE_BASE_H + 'px'; return; }
+
+  /* a square-root-ish map so the movement is visible but never silly */
+  const vol = Math.max(0, Math.min(1, state.volume));
+  const kVol = 0.30 + 0.70 * Math.sqrt(vol);                 // preview slider
+  const gain = dbToGain(state.boost ? state.boost.volDb : 0);
+  const kGain = Math.min(1.55, Math.max(0.45, Math.sqrt(gain)));  // loudness dB
+  const k = Math.min(1.85, Math.max(0.34, kVol * kGain));
+
+  /* wavesurfer mounts one host div straight into #waveform and draws inside a
+     shadow root under it, so scaling that host scales the whole picture and
+     nothing else. Never touch getWrapper() as well — that would scale twice. */
+  const target = host.firstElementChild
+    || (state.ws && typeof state.ws.getWrapper === 'function' ? state.ws.getWrapper() : null);
+  if (target) target.style.transform = Math.abs(k - 1) < 0.005 ? '' : 'scaleY(' + k.toFixed(3) + ')';
+  host.style.height = Math.round(WAVE_BASE_H * k) + 'px';
+  host.dataset.waveScale = k.toFixed(2);
+}
+
  $('#volSlider').addEventListener('input', (e) => {
   state.volume = parseFloat(e.target.value);
   if (state.ws) state.ws.setVolume(state.volume);
+  applyWaveScale();
 });
 
 /* Background tabs throttle requestAnimationFrame to nothing, which used to leave
@@ -1774,22 +1855,58 @@ function disableOverlappingFades(changedId) {
   toast('faded', 'ok');
 });
 
+/* The one fade-shape function, shared by the fades, the anti-fade (boost)
+   preview and the bake — they used to each roll their own, so the preview
+   could promise a shape the download didn't deliver. */
+function fadeRampFn(curve) {
+  switch (curve) {
+    case 'exp': return (t) => t * t;
+    case 'log': return (t) => Math.sqrt(t);
+    case 'cos': return (t) => 0.5 - 0.5 * Math.cos(Math.PI * t);
+    default:    return (t) => t;
+  }
+}
+
+/* ---- anti-fade (a.k.a. "boost") shaping -------------------------------
+   A boost used to slam 2x (+6 dB) on sample 0 and then slide down to 1x. On
+   real tracks the first few tens of ms are *already* at full level, so that
+   first hit got +6 dB out of nowhere and sounded like one random loud patch.
+
+   `boostEdgeGain` fixes that shape: it is exactly 1 at the edge, holds at 1
+   for the whole hold-off (`skip`, in seconds), eases in with an S-curve, and
+   only then reaches the boost — which itself slides back to 1 by the end of
+   the window. Nothing is ever boosted on the very first sample.
+
+     d     seconds measured from the edge this boost belongs to
+     span  full length of the boost window (seconds)
+     skip  hold-off at the edge (seconds) — never boosted
+     ramp  the fade curve shape
+     mode  'in' (start of the track) or 'out' (end)                    */
+function boostEdgeGain(d, span, skip, ramp, mode) {
+  if (!(span > 0) || d >= span) return 1;
+  const u = Math.max(0, Math.min(1, d / span));
+  const body = mode === 'in' ? 2 - ramp(u) : 1 + ramp(1 - u);
+  const hold = Math.max(0.02, Math.min(Math.max(0, skip || 0), span * 0.85));
+  const e = Math.max(0, Math.min(1, (d - hold) / hold));
+  const ease = e * e * (3 - 2 * e);           // smoothstep, no step at the seam
+  return 1 + (body - 1) * ease;
+}
+
+function boostSkips() {
+  return {
+    in:  Math.max(0, parseFloat($('#boostInSkip')?.value) || 0),
+    out: Math.max(0, parseFloat($('#boostOutSkip')?.value) || 0),
+  };
+}
+
 function applyFadeAndBoost(buf, fadeIn, fadeOut, boostIn, boostOut, curve) {
   const sr = buf.sampleRate;
   const out = getCtx().createBuffer(buf.numberOfChannels, buf.length, sr);
   const fIn = Math.floor(fadeIn * sr);
   const fOut = Math.floor(fadeOut * sr);
-  const bIn = Math.floor(boostIn * sr);
-  const bOut = Math.floor(boostOut * sr);
   const N = buf.length;
-  const ramp = (t) => {
-    switch (curve) {
-      case 'exp': return t * t;
-      case 'log': return Math.sqrt(t);
-      case 'cos': return 0.5 - 0.5 * Math.cos(Math.PI * t);
-      default: return t;
-    }
-  };
+  const ramp = fadeRampFn(curve);
+  const skips = boostSkips();
   for (let c = 0; c < buf.numberOfChannels; c++) {
     const src = buf.getChannelData(c);
     const dst = out.getChannelData(c);
@@ -1797,8 +1914,8 @@ function applyFadeAndBoost(buf, fadeIn, fadeOut, boostIn, boostOut, curve) {
       let g = 1;
       if (fIn > 0 && i < fIn) g *= ramp(i / fIn);
       if (fOut > 0 && i > N - fOut) g *= ramp((N - i) / fOut);
-      if (bIn > 0 && i < bIn) g *= 2 - ramp(i / bIn);
-      if (bOut > 0 && i > N - bOut) g *= 1 + ramp(1 - (N - i) / bOut);
+      if (boostIn > 0)  g *= boostEdgeGain(i / sr, boostIn, skips.in, ramp, 'in');
+      if (boostOut > 0) g *= boostEdgeGain((N - 1 - i) / sr, boostOut, skips.out, ramp, 'out');
       dst[i] = src[i] * g;
     }
   }
@@ -1907,8 +2024,16 @@ async function breathe(state_) {
 /* ---- loudness: volume + bass ----------------------------------------- */
 
 const dbToGain = (db) => Math.pow(10, (Number(db) || 0) / 20);
+const fmtDb = (db) => { const v = Number(db) || 0; return (v > 0.049 ? '+' : '') + v.toFixed(1) + ' dB'; };
 
 function boostActive(b) {
+  b = b || state.boost;
+  /* negative volume is a real change too — it has to survive into the export */
+  return Math.abs(b.volDb || 0) > 0.01 || Math.abs(b.bassDb || 0) > 0.01;
+}
+
+/* only a positive gain can clip, so only a positive gain needs the limiter */
+function boostNeedsLimiter(b) {
   b = b || state.boost;
   return (b.volDb || 0) > 0.01 || (b.bassDb || 0) > 0.01;
 }
@@ -1930,12 +2055,12 @@ async function applyBoostOffline(buf, boost) {
     shelf.gain.value = b.bassDb;
     node.connect(shelf); node = shelf;
   }
-  if ((b.volDb || 0) > 0.01) {
+  if (Math.abs(b.volDb || 0) > 0.01) {
     const g = off.createGain();
     g.gain.value = dbToGain(b.volDb);
     node.connect(g); node = g;
   }
-  if (b.limiter !== false) {
+  if (b.limiter !== false && boostNeedsLimiter(b)) {
     const comp = off.createDynamicsCompressor();
     comp.threshold.value = -1.5;
     comp.knee.value = 0;
@@ -1954,7 +2079,7 @@ async function applyBoostOffline(buf, boost) {
 function syncBoostUI() {
   const b = state.boost;
   if ($('#volBoostRange')) $('#volBoostRange').value = b.volDb;
-  if ($('#volBoostVal')) $('#volBoostVal').textContent = (b.volDb || 0).toFixed(1) + ' dB';
+  if ($('#volBoostVal')) $('#volBoostVal').textContent = fmtDb(b.volDb);
   if ($('#bassBoostRange')) $('#bassBoostRange').value = b.bassDb;
   if ($('#bassBoostVal')) $('#bassBoostVal').textContent = (b.bassDb || 0).toFixed(1) + ' dB';
   if ($('#bassFreqRange')) $('#bassFreqRange').value = b.bassFreq;
@@ -1966,8 +2091,9 @@ function syncBoostUI() {
 
 $('#volBoostRange')?.addEventListener('input', (e) => {
   state.boost.volDb = parseFloat(e.target.value) || 0;
-  $('#volBoostVal').textContent = state.boost.volDb.toFixed(1) + ' dB';
+  $('#volBoostVal').textContent = fmtDb(state.boost.volDb);
   PreviewEngine.applyBoost();
+  applyWaveScale();
   updatePending();
 });
 $('#bassBoostRange')?.addEventListener('input', (e) => {
@@ -1994,6 +2120,7 @@ $('#btnResetBoost')?.addEventListener('click', () => {
   state.boost = { volDb: 0, bassDb: 0, bassFreq: 110, limiter: true };
   syncBoostUI();
   PreviewEngine.applyBoost();
+  applyWaveScale();
 });
 
 $('#btnApplyBoost')?.addEventListener('click', async () => {
@@ -2114,7 +2241,7 @@ function findFadeKnee(envDb, from, to) {
    the wrong thing. */
 function refineKnee(smoothDb, kneeW, from, to, bodyDb, direction, winSec) {
   const TOL = 0.4;                                   // dB below the body level
-  const maxShift = Math.max(1, Math.round(0.4 / winSec));
+  const maxShift = Math.max(1, Math.round(0.6 / winSec));
   if (direction === 'out') {
     let k = kneeW;
     const limit = Math.min(to - 1, kneeW + maxShift);
@@ -2127,12 +2254,35 @@ function refineKnee(smoothDb, kneeW, from, to, bodyDb, direction, winSec) {
   return k;
 }
 
+/* The knee fit happily mistakes a quiet dip for the end of the fade — a dip is
+   quiet and then loud again, which looks exactly like a ramp. When that
+   happens the un-fade stops early and lifts almost nothing. So after the knee
+   is found, walk on while the level is still clearly below the body and let
+   the correction cover that too. */
+function extendKneeToBody(smoothDb, kneeW, from, to, bodyDb, direction, winSec) {
+  const TOL = 1.0;                                              // dB under the body still counts as faded
+  const maxRun = Math.max(1, Math.round(Math.min(8, (to - from) * winSec * 0.5) / winSec));
+  let k = kneeW, n = 0;
+  if (direction === 'out') {
+    while (k > from && n < maxRun && smoothDb[k - 1] < bodyDb - TOL) { k--; n++; }
+    return k;
+  }
+  while (k < to - 1 && n < maxRun && smoothDb[k + 1] < bodyDb - TOL) { k++; n++; }
+  return k;
+}
+
 async function autoFade(direction) {
   if (!state.audioBuffer) return;
   const buf = state.audioBuffer, sr = buf.sampleRate;
   const { start, end } = state.region;
   const selDur = Math.max(0.3, end - start);
   const wantFade = !!(autoFadeToSilence && autoFadeToSilence.checked);
+  /* How long to leave the outer edge alone (so the correction can start a bit
+     later instead of grabbing the first moment of the track), and how loud the
+     lift is allowed to get. Both are user-facing because the right answer
+     depends on the track. */
+  const holdSec = Math.max(0, parseFloat($('#unfadeSkip')?.value) || 0);
+  const maxLiftDb = Math.min(24, Math.max(0, parseFloat($('#unfadeMaxLift')?.value) || 0));
 
   busy.show('measuring levels…');
   await new Promise(r => setTimeout(r, 20));
@@ -2170,6 +2320,7 @@ async function autoFade(direction) {
 
   const winSec = winSamples / sr;
   kneeW = refineKnee(smoothDb, kneeW, w0, w1, bodyDb, direction, winSec);
+  kneeW = extendKneeToBody(smoothDb, kneeW, w0, w1, bodyDb, direction, winSec);
 
   const kneeSec = (kneeW * winSamples) / sr;
   const bodyLevel = Math.pow(10, bodyDb / 20);
@@ -2177,7 +2328,7 @@ async function autoFade(direction) {
   /* Per-window compensation: gain = body level / current level, so the faded
      stretch is pulled back up to the average and STAYS there (instead of being
      multiplied by one constant, which would leave the fade still falling). */
-  const MAX_GAIN = 16;                                    // +24 dB ceiling
+  const MAX_GAIN = Math.max(1, Math.pow(10, maxLiftDb / 20));   // user-set ceiling (default +12 dB)
   const gains = new Float32Array(env.length).fill(1);
   const region = direction === 'out' ? [kneeW, w1] : [w0, kneeW + 1];
   for (let w = region[0]; w < region[1]; w++) {
@@ -2204,6 +2355,19 @@ async function autoFade(direction) {
       gains[w] = 1 + (gains[w] - 1) * (u * u * (3 - 2 * u));
     }
   }
+  /* Monotone guard. The lift has to be a smooth ramp, never a bump: a single
+     quiet window in the middle of the head/tail (a breath, a gap between
+     notes, a quiet bar) used to be pulled all the way up to the track average
+     on its own, which is exactly the "one part suddenly sounds loud as hell"
+     effect. Clamping each window to its neighbour *away* from the edge turns
+     any such bump into a step-down, so the correction can only ever rise
+     gradually towards the body of the track. */
+  if (direction === 'out') {
+    for (let w = region[1] - 2; w >= region[0]; w--) gains[w] = Math.min(gains[w], gains[w + 1]);
+  } else {
+    for (let w = region[0] + 1; w < region[1]; w++) gains[w] = Math.min(gains[w], gains[w - 1]);
+  }
+
   /* smooth the gain curve a touch so it doesn't stair-step */
   const g2 = new Float32Array(gains);
   for (let w = region[0]; w < region[1]; w++) {
@@ -2240,15 +2404,36 @@ async function autoFade(direction) {
   await nextFrame();
 
   /* Where the compensation applies: everything from the knee to the end of the
-     selection (tail), or from the start to the knee (head). */
+     selection (tail), or from the start to the knee (head) — minus the outer
+     hold-off, which stays exactly as it was. That hold-off is what stops the
+     un-fade from "starting too soon" and grabbing audio that isn't faded. */
   const kneeSample = Math.max(0, Math.min(buf.length, Math.round(kneeW * winSamples)));
-  const rs = direction === 'out' ? Math.max(i0, kneeSample) : i0;
-  const re = direction === 'out' ? i1 : Math.min(i1, kneeSample);
+  const holdSamples = Math.round(holdSec * sr);
+  const rs = direction === 'out' ? Math.min(i1, Math.max(i0, kneeSample)) : Math.min(i1, i0 + holdSamples);
+  const re = direction === 'out' ? Math.max(rs, i1 - holdSamples) : Math.min(i1, kneeSample);
+
+  if (re - rs < Math.round(0.02 * sr)) {
+    busy.hide();
+    toast('nothing left to un-fade · the hold-off covers the whole fade — lower "hold off" to lift it', 'err');
+    return;
+  }
+
+  /* Hold-off seam. Cutting the correction on at the hold-off boundary is a
+     level jump (the lifted audio is louder than the raw audio), so the
+     correction fades in from unity over 0.25 s at the outer edge: the lift
+     really does start later, and it arrives gradually instead of stepping. */
+  const taperLen = Math.max(1, Math.round(0.25 * sr));
+  const corrTaper = (i) => {
+    const t = direction === 'out' ? (re - i) / taperLen : (i - rs) / taperLen;
+    const u = Math.max(0, Math.min(1, t));
+    return u * u * (3 - 2 * u);
+  };
+  const corrGain = (i) => 1 + (easeWin(i) - 1) * corrTaper(i);
 
   /* Never let the correction push a sample over full scale: the window envelope
      can leak a little across a hard level step, so clamp per sample. Inactive
      almost everywhere (the lifted stretch is quiet by definition). */
-  const safeGain = (src, i) => Math.min(easeWin(i), 0.985 / Math.max(1e-6, Math.abs(src[i])));
+  const safeGain = (src, i) => Math.min(corrGain(i), 0.985 / Math.max(1e-6, Math.abs(src[i])));
   for (let c = 0; c < chans.length; c++) {
     const src = chans[c], dst = outs[c];
     for (let i = rs; i < re; i++) dst[i] = src[i] * safeGain(src, i);
@@ -2290,8 +2475,9 @@ async function autoFade(direction) {
   await refreshWaveform({ preserveCurve: true });
   busy.hide();
   const capped = Array.prototype.some.call(gains, (g, i) => i >= region[0] && i < region[1] && g >= MAX_GAIN - 1e-6);
-  toast('un-faded the ' + (direction === 'out' ? 'tail' : 'head') + ' · fade starts at ' + kneeSec.toFixed(2) + ' s, ' + dropDb.toFixed(1) + ' dB deep · lifted to the track average'
-    + (capped ? ' (deepest part capped at +24 dB)' : '') + clipNote + (wantFade ? ' · then faded' : ''), 'ok');
+  toast('un-faded the ' + (direction === 'out' ? 'tail' : 'head') + ' · fade starts at ' + kneeSec.toFixed(2) + ' s, ' + dropDb.toFixed(1) + ' dB deep · lifted up to the track average'
+    + (holdSec > 0 ? ', first/last ' + holdSec.toFixed(2) + ' s left alone' : '')
+    + (capped ? ' (deepest part capped at +' + maxLiftDb.toFixed(1) + ' dB)' : '') + clipNote + (wantFade ? ' · then faded' : ''), 'ok');
 }
 
 $('#btnAutoFadeOut')?.addEventListener('click', () => autoFade('out'));
@@ -3539,8 +3725,8 @@ function updatePending() {
   const pit = parseFloat($('#pitchRange')?.value) || 0;
   if (Math.abs(pit) >= 0.05) chips.push((pit >= 0 ? '+' : '') + pit.toFixed(1) + ' st');
   if (state.boost) {
-    if (state.boost.volDb > 0.01) chips.push('+' + state.boost.volDb.toFixed(1) + ' dB vol');
-    if (state.boost.bassDb > 0.01) chips.push('+' + state.boost.bassDb.toFixed(1) + ' dB bass');
+    if (Math.abs(state.boost.volDb || 0) > 0.01) chips.push(fmtDb(state.boost.volDb) + ' vol');
+    if (Math.abs(state.boost.bassDb || 0) > 0.01) chips.push(fmtDb(state.boost.bassDb) + ' bass');
   }
   const hudStatus = $('#hsStatus');
   if (hudStatus && !$('#busy').classList.contains('show')) setHudStatus(chips.length ? 'pending ' + chips.length : 'ready', chips.length ? 'warn' : 'ok');
@@ -3567,6 +3753,10 @@ window.addEventListener('keydown', (e) => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', updatePending);
 });
+['boostInSkip','boostOutSkip'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', () => { drawFadeOverlay(); updatePending(); });
+});
 const _updTrim = updateTrimDisplay;
 updateTrimDisplay = function() { _updTrim(); updatePending(); };
 
@@ -3586,21 +3776,24 @@ function drawFadeOverlay() {
   
   const pct = (sec) => Math.max(0, Math.min(100, (sec / dur) * 100));
   const parts = [];
+  /* the boost wedges start where the hold-off ends, so the shading matches the
+     audio: the first / last few hundred ms aren't boosted at all */
+  const skips = boostSkips();
   
   if (fi > 0) {
     const X = pct(fi);
     parts.push(`<polygon class="wedge-fade" points="0,0 ${X.toFixed(3)},0 0,100"/>`);
   } else if (bi > 0) {
-    const X = pct(bi);
-    parts.push(`<polygon class="wedge-boost" points="0,100 ${X.toFixed(3)},100 0,0"/>`);
+    const A = pct(Math.min(skips.in, bi)), B = pct(bi);
+    parts.push(`<polygon class="wedge-boost" points="${A.toFixed(3)},100 ${B.toFixed(3)},100 ${A.toFixed(3)},0"/>`);
   }
   
   if (fo > 0) {
     const X = pct(fo);
     parts.push(`<polygon class="wedge-fade" points="100,0 100,100 ${(100-X).toFixed(3)},0"/>`);
   } else if (bo > 0) {
-    const X = pct(bo);
-    parts.push(`<polygon class="wedge-boost" points="100,100 100,0 ${(100-X).toFixed(3)},100"/>`);
+    const A = pct(Math.min(skips.out, bo)), B = pct(bo);
+    parts.push(`<polygon class="wedge-boost" points="${(100-A).toFixed(3)},100 ${(100-B).toFixed(3)},100 ${(100-A).toFixed(3)},0"/>`);
   }
   
   overlay.innerHTML = parts.join('');
@@ -3916,6 +4109,8 @@ PreviewEngine.startTick = function() {
     if (!state.ws) { self.raf = null; return; }
     const ct = state.ws.getCurrentTime();
     $('#tCur').textContent = fmtTime(ct, 2);
+    const rampFn = fadeRampFn(fadeCurve);
+    const skips = boostSkips();
     if (ct >= state.region.end - 0.0005) {
       if (state.loop && state.region.end - state.region.start > 0.05) state.ws.setTime(state.region.start);
       else { state.ws.pause(); state.ws.setTime(state.region.start); }
@@ -3928,8 +4123,9 @@ PreviewEngine.startTick = function() {
     let g = 1;
     if (fi > 0 && ct - rs < fi) g *= Math.max(0, (ct - rs) / fi);
     if (fo > 0 && re - ct < fo) g *= Math.max(0, (re - ct) / fo);
-    if (bi > 0 && ct - rs < bi) g *= 2 - Math.max(0, Math.min(1, (ct - rs) / bi));
-    if (bo > 0 && re - ct < bo) g *= 1 + (1 - Math.max(0, Math.min(1, (re - ct) / bo)));
+    /* anti-fade: same shaping as the bake, so the preview can't lie */
+    if (bi > 0) g *= boostEdgeGain(ct - rs, bi, skips.in, rampFn, 'in');
+    if (bo > 0) g *= boostEdgeGain(re - ct, bo, skips.out, rampFn, 'out');
     if (!self.gain) self.ensureCtx();
     self.gain.gain.cancelScheduledValues(self.ctx.currentTime);
     self.gain.gain.setValueAtTime(Math.max(0, Math.min(4, g)), self.ctx.currentTime);
@@ -3957,7 +4153,7 @@ PreviewEngine.setGain = function(v, immediate) {
 const _origMountWavesurfer = mountWavesurfer;
 mountWavesurfer = async function(buf) {
   const r = await _origMountWavesurfer(buf);
-  setTimeout(() => { drawFadeOverlay(); }, 50);
+  setTimeout(() => { drawFadeOverlay(); applyWaveScale(); }, 50);
   return r;
 };
 
