@@ -840,12 +840,12 @@ footer {
             <div></div>
           </div>
           <div class="row">
-            <div class="label">Boost hold-off<small>leave the very first / last N seconds alone before a boost starts</small></div>
+            <div class="label">Boost hold-off<small>leave the very first / last N seconds alone · <b>0 = start immediately, right on the edge</b></small></div>
             <div style="display:flex;gap:10px;align-items:center;">
               <span class="mono" style="font-size:11px;color:var(--muted);">START</span>
-              <input type="number" id="boostInSkip" step="0.05" min="0" max="10" value="0.30" style="max-width:100px;" title="seconds held at unity before the start boost eases in"/>
+              <input type="number" id="boostInSkip" step="0.05" min="0" max="10" value="0" style="max-width:100px;" title="seconds held at unity before the start boost eases in (0 = right on the edge, like before)"/>
               <span class="mono" style="font-size:11px;color:var(--muted);">END</span>
-              <input type="number" id="boostOutSkip" step="0.05" min="0" max="10" value="0.30" style="max-width:100px;" title="seconds held at unity before the end boost eases in"/>
+              <input type="number" id="boostOutSkip" step="0.05" min="0" max="10" value="0" style="max-width:100px;" title="seconds held at unity before the end boost eases in (0 = right on the edge, like before)"/>
             </div>
             <div></div>
           </div>
@@ -864,14 +864,14 @@ footer {
           </div>
           <div class="unfade-opts" style="flex:1 1 100%;">
             <label for="unfadeSkip">hold off
-              <input type="number" id="unfadeSkip" step="0.05" min="0" max="10" value="0.50"/>
+              <input type="number" id="unfadeSkip" step="0.05" min="0" max="10" value="0"/>
               <span class="unit">s</span>
             </label>
             <label for="unfadeMaxLift">max lift
-              <input type="number" id="unfadeMaxLift" step="0.5" min="0" max="24" value="12"/>
+              <input type="number" id="unfadeMaxLift" step="0.5" min="0" max="24" value="24"/>
               <span class="unit">dB</span>
             </label>
-            <span class="tip">the correction never touches the outer hold-off, is capped at max lift, and may only ramp up smoothly — it can't pop a single quiet patch up to the average</span>
+            <span class="tip">target = the <b>average level of the whole track</b>, and the un-faded stretch is measured afterwards so it can never end up louder than that · hold off 0 = start right at the beginning · lower <b>max lift</b> if you want a gentler lift that stops short of the average</span>
           </div>
         </div>
         <div class="btn-row">
@@ -1886,7 +1886,10 @@ function boostEdgeGain(d, span, skip, ramp, mode) {
   if (!(span > 0) || d >= span) return 1;
   const u = Math.max(0, Math.min(1, d / span));
   const body = mode === 'in' ? 2 - ramp(u) : 1 + ramp(1 - u);
-  const hold = Math.max(0.02, Math.min(Math.max(0, skip || 0), span * 0.85));
+  /* skip = 0 means "start on the edge, like before": only a 20 ms softening
+     so there is no hard step, no delay */
+  const skipSec = Math.max(0, skip || 0);
+  const hold = skipSec > 0 ? Math.min(skipSec, span * 0.85) : 0.02;
   const e = Math.max(0, Math.min(1, (d - hold) / hold));
   const ease = e * e * (3 - 2 * e);           // smoothstep, no step at the seam
   return 1 + (body - 1) * ease;
@@ -2254,6 +2257,28 @@ function refineKnee(smoothDb, kneeW, from, to, bodyDb, direction, winSec) {
   return k;
 }
 
+/* The level the correction aims at. findFadeKnee() estimates a "body" from one
+   local slice of the analysed span — and for a head fade that span is mirrored,
+   so the slice it reads is the LAST 35 % of the selection. That is not the
+   track's average: a hot outro (or a loud intro, for a tail fade) drags the
+   estimate up, the whole faded stretch gets lifted to it, and the beginning of
+   the song ends up louder than the rest of it. Measure the average over the
+   entire selection instead, and take the mean of the middle of the distribution
+   (the 40th-60th percentile band of the window levels). Drum hits, gaps and a
+   loud last chorus all fall outside that band, so what is left is the level the
+   song actually sits at. */
+function averageLevelDb(envDb, from, to) {
+  const vals = [];
+  for (let i = Math.max(0, from); i < Math.min(envDb.length, to); i++) vals.push(envDb[i]);
+  if (!vals.length) return -60;
+  vals.sort((a, b) => a - b);
+  const lo = Math.floor(vals.length * 0.40);
+  const hi = Math.max(lo + 1, Math.ceil(vals.length * 0.60));
+  let sum = 0, n = 0;
+  for (let i = lo; i < hi; i++) { sum += Math.pow(10, vals[i] / 20); n++; }
+  return n ? 20 * Math.log10(sum / n) : vals[Math.floor(vals.length / 2)];
+}
+
 /* The knee fit happily mistakes a quiet dip for the end of the fade — a dip is
    quiet and then loud again, which looks exactly like a ramp. When that
    happens the un-fade stops early and lifts almost nothing. So after the knee
@@ -2321,6 +2346,14 @@ async function autoFade(direction) {
   const winSec = winSamples / sr;
   kneeW = refineKnee(smoothDb, kneeW, w0, w1, bodyDb, direction, winSec);
   kneeW = extendKneeToBody(smoothDb, kneeW, w0, w1, bodyDb, direction, winSec);
+
+  /* Aim at the track's own average, full stop — that is what the button
+     promises and what "un-fade to the average level" has to mean. The knee
+     fitter's local estimate is only used for finding the knee itself; it is
+     fine for that and wrong as a loudness target (it reads one end of the
+     song). The hard guard below then proves the result really did land there. */
+  const avgBodyDb = averageLevelDb(smoothDb, w0, w1);
+  bodyDb = avgBodyDb;
 
   const kneeSec = (kneeW * winSamples) / sr;
   const bodyLevel = Math.pow(10, bodyDb / 20);
@@ -2439,6 +2472,26 @@ async function autoFade(direction) {
     for (let i = rs; i < re; i++) dst[i] = src[i] * safeGain(src, i);
   }
 
+  /* Hard guarantee. Whatever the estimate said, measure what actually came out
+     and if the lifted stretch is louder than the average, pull the correction
+     back until it isn't. This is the "why is the first second louder than the
+     rest of the song" insurance. */
+  let sumSq = 0, nSq = 0;
+  for (let c = 0; c < chans.length; c++) {
+    const d = outs[c];
+    for (let i = rs; i < re; i++) { sumSq += d[i] * d[i]; nSq++; }
+  }
+  const liftedRms = Math.sqrt(sumSq / Math.max(1, nSq));
+  let loudNote = '';
+  if (liftedRms > bodyLevel * 1.02) {
+    const kk = (bodyLevel * 0.98) / liftedRms;
+    for (let c = 0; c < chans.length; c++) {
+      const src = chans[c], dst = outs[c];
+      for (let i = rs; i < re; i++) dst[i] = src[i] * (1 + (safeGain(src, i) - 1) * kk);
+    }
+    loudNote = ' · pulled back ' + (20 * Math.log10(kk)).toFixed(1) + ' dB to sit at the average';
+  }
+
   /* optional: put a real fade back on the (now levelled) stretch */
   if (wantFade && re > rs) {
     const fl = Math.min(Math.round(0.6 * sr), Math.max(1, re - rs));
@@ -2475,9 +2528,9 @@ async function autoFade(direction) {
   await refreshWaveform({ preserveCurve: true });
   busy.hide();
   const capped = Array.prototype.some.call(gains, (g, i) => i >= region[0] && i < region[1] && g >= MAX_GAIN - 1e-6);
-  toast('un-faded the ' + (direction === 'out' ? 'tail' : 'head') + ' · fade starts at ' + kneeSec.toFixed(2) + ' s, ' + dropDb.toFixed(1) + ' dB deep · lifted up to the track average'
+  toast('un-faded the ' + (direction === 'out' ? 'tail' : 'head') + ' · fade starts at ' + kneeSec.toFixed(2) + ' s, ' + dropDb.toFixed(1) + ' dB deep · target ' + bodyDb.toFixed(1) + ' dB (track average ' + avgBodyDb.toFixed(1) + ' dB, landed at ' + (20 * Math.log10(liftedRms + 1e-9)).toFixed(1) + ' dB)'
     + (holdSec > 0 ? ', first/last ' + holdSec.toFixed(2) + ' s left alone' : '')
-    + (capped ? ' (deepest part capped at +' + maxLiftDb.toFixed(1) + ' dB)' : '') + clipNote + (wantFade ? ' · then faded' : ''), 'ok');
+    + (capped ? ' (deepest part capped at +' + maxLiftDb.toFixed(1) + ' dB)' : '') + clipNote + loudNote + (wantFade ? ' · then faded' : ''), 'ok');
 }
 
 $('#btnAutoFadeOut')?.addEventListener('click', () => autoFade('out'));
